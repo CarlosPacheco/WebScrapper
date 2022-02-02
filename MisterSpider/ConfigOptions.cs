@@ -68,7 +68,6 @@ namespace MisterSpider
         /// format using "|" as a delimiter: 
         /// .jpg|.mp3|.pdf
         /// </summary>
-        [JsonConverter(typeof(FileTypeJsonConverter))]
         public IList<string> FileTypesToDownload { get; set; }
 
         /// <summary>
@@ -76,7 +75,6 @@ namespace MisterSpider
         /// format using "|" as a delimiter: 
         /// .jpg|.mp3|.pdf
         /// </summary>
-        [JsonConverter(typeof(FileTypeJsonConverter))]
         public IList<string> ExcludedFileTypes { get; set; }
 
         /// <summary>
@@ -104,7 +102,6 @@ namespace MisterSpider
 
         public bool TryAgainOnError { get; set; }
 
-        [JsonConverter(typeof(IPEndPointJsonConverter))]
-        public IPEndPoint IpAddress { get; set; }
+        public string WebProxyAddress { get; set; }
     }
 }

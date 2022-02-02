@@ -9,12 +9,10 @@ namespace MisterSpider.Spiders
 {
     public class AirbnbSpider : Spider<double>
     {
-        private SpiderParams _spiderParams { get { return (SpiderParams)Tag; } }
-
-        public AirbnbSpider(ILogger<AirbnbSpider> logger, INetConnection connection, IOptions<ConfigOptions> config) : base(logger, connection, config)
+        public AirbnbSpider(ILogger<AirbnbSpider> logger, INetConnection connection, IOptions<ConfigOptions> config, SpiderParams spiderParams) : base(logger, connection, config)
         {
-            Connection = new NetConnectionAirbnb("https://www.airbnb.pt/rooms/5073240", logger, config);
-            Urls = new List<string> { string.Format("https://www.airbnb.pt/rooms/ajax_refresh_subtotal?utf8=%E2%9C%93&checkin={1}&checkout={2}&number_of_guests={3}&hosting_id={0}&from_search_checkin={1}&from_search_checkout={2}", "https://www.airbnb.pt/rooms/5073240".Replace("https://www.airbnb.pt/rooms/", string.Empty), _spiderParams.CheckIn, _spiderParams.CheckOut, _spiderParams.Adults, _spiderParams.Currency) };
+            // Connection = new NetConnectionAirbnb("https://www.airbnb.pt/rooms/5073240", logger, config);
+            Urls = new List<string> { string.Format("https://www.airbnb.pt/rooms/ajax_refresh_subtotal?utf8=%E2%9C%93&checkin={1}&checkout={2}&number_of_guests={3}&hosting_id={0}&from_search_checkin={1}&from_search_checkout={2}", "https://www.airbnb.pt/rooms/5073240".Replace("https://www.airbnb.pt/rooms/", string.Empty), spiderParams.CheckIn, spiderParams.CheckOut, spiderParams.Adults, spiderParams.Currency) };
         }
 
         protected override double Crawl(Page page)

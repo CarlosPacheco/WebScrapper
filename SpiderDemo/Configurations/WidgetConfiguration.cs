@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SpiderDemo.Model;
+using System;
 
 namespace MisterSpider.Configurations
 {
@@ -17,5 +18,9 @@ namespace MisterSpider.Configurations
         public string Children { get; set; }
 
         public string Currency { get; set; }
+
+        public string Symbol { get; set; }
+
+        public Company Company { get; set; } = new Company();
     }
 }

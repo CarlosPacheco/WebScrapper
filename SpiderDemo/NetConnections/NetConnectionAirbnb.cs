@@ -4,6 +4,8 @@ using System.Net;
 using MisterSpider.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Net.Http;
+using Microsoft.Net.Http.Headers;
 
 namespace MisterSpider
 {
@@ -17,7 +19,7 @@ namespace MisterSpider
 
         private string TargetUrl { get; set; }
 
-        public NetConnectionAirbnb(string targetUrl, ILogger logger, IOptions<ConfigOptions> config) : base(logger, config)
+        public NetConnectionAirbnb(string targetUrl, ILogger<NetConnectionAirbnb> logger, IOptions<ConfigOptions> config) : base(logger, config)
         {
             TargetUrl = targetUrl;
         }
@@ -33,18 +35,22 @@ namespace MisterSpider
             {
                 CookieContainer cookieJar = new CookieContainer();
                 Cookies = new CookieCollection();
-                HttpWebRequest request01 = (HttpWebRequest)WebRequest.Create(TargetUrl);
+                HttpClient request01 = new HttpClient(new HttpClientHandler() { CookieContainer = cookieJar, UseCookies = true, });
+                cookieJar.Add(Cookies);
 
-                request01.CookieContainer = cookieJar;
-                request01.CookieContainer.Add(Cookies);
-                request01.Method = WebRequestMethods.Http.Get;
-                request01.UserAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36";
-                request01.Proxy = null;
+                request01.DefaultRequestHeaders.Add(HeaderNames.UserAgent, "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36");
+
+                // HttpWebRequest request01 = (HttpWebRequest)WebRequest.Create(TargetUrl);
+                // request01.CookieContainer = cookieJar;
+                // request01.CookieContainer.Add(Cookies);
+                // request01.Method = WebRequestMethods.Http.Get;
+                // request01.UserAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36";
+                // request01.Proxy = null;
 
                 //Get the response from the server and save the cookies from the first request..
-                HttpWebResponse response01 = (HttpWebResponse)request01.GetResponse();
+                HttpResponseMessage response01 = request01.GetAsync(TargetUrl).Result;
 
-                Cookies = response01.Cookies;
+                Cookies = cookieJar.GetCookies(new Uri(TargetUrl));
                 SessionToken = GetDataForm(ReadPage(response01));
 
             }
@@ -55,15 +61,23 @@ namespace MisterSpider
             }
         }
 
-        protected override HttpWebRequest GetHttpWebRequest(string url)
+        protected override HttpClient GetHttpClient(HttpClientHandler httpClientHandler)
         {
             GetHeaders();
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(string.Format("{0}&authenticity_token={1}", url, SessionToken));
-            request.UserAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36";
-            request.CookieContainer = request.CookieContainer ?? new CookieContainer();
-            request.CookieContainer.Add(Cookies);
-            request.ContentType = "application/json, text/javascript, */*; q=0.01";
-            request.Headers.Add("X-Requested-With", "XMLHttpRequest");
+
+            CookieContainer cookieJar = new CookieContainer();
+            cookieJar.Add(Cookies);
+            HttpClient request = new HttpClient(new HttpClientHandler() { CookieContainer = cookieJar, UseCookies = true, });
+            request.DefaultRequestHeaders.Add(HeaderNames.UserAgent, "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36");
+            request.DefaultRequestHeaders.Add(HeaderNames.ContentType, "application/json, text/javascript, */*; q=0.01");
+            request.DefaultRequestHeaders.Add("X-Requested-With", "XMLHttpRequest");
+            
+            // HttpWebRequest request = (HttpWebRequest)WebRequest.Create(string.Format("{0}&authenticity_token={1}", url, SessionToken));
+            // request.UserAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36";
+            //  request.CookieContainer = request.CookieContainer ?? new CookieContainer();
+            //request.CookieContainer.Add(Cookies);
+            //request.ContentType = "application/json, text/javascript, */*; q=0.01";
+            //request.Headers.Add("X-Requested-With", "XMLHttpRequest");
 
             return request;
         }

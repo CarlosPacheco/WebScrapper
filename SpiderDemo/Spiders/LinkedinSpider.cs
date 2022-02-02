@@ -18,7 +18,7 @@ namespace MisterSpider.Spiders
         public LinkedinSpider(ILogger<LinkedinSpider> logger, INetConnection connection, IOptions<ConfigOptions> config) : base(logger, connection, config)
         {
             _searchWord = "hotel teatro porto";
-            Connection = new NetConnectionLinkedin(logger, config);
+           // Connection = new NetConnectionLinkedin(logger, config);
             Urls = new List<string> { string.Format("https://www.linkedin.com/vsearch/p?type=people&keywords={0}", _searchWord) };
         }
 

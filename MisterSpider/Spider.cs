@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Net;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,8 +28,6 @@ namespace MisterSpider
 
         protected ConcurrentBag<string> UrlsSeen { get; set; } = new ConcurrentBag<string>();
 
-        public object Tag { get; set; }
-
         protected virtual bool UseSitemap { get { return false; } }
 
         /// <summary>
@@ -44,15 +42,10 @@ namespace MisterSpider
         protected List<string> SitemapURLs { get; set; } = new List<string>();
 
         /// <summary>
-        /// Save the itens inside a JSON file
-        /// </summary>
-        protected FileJson FileManager { get; set; }
-
-        /// <summary>
         /// Logs the Fails Urls when Crawl a page
         /// </summary>
         protected FileJson FileUrlsLog { get; set; }
-       
+
         protected Spider(ILogger<Spider<T>> logger, INetConnection connection, IOptions<ConfigOptions> config)
         {
             _config = config.Value;
@@ -61,7 +54,6 @@ namespace MisterSpider
 
             ParallelManager = new ThreadManager(config);
 
-            FileManager = new FileJson($"{GetType().Name}{"Itens.json"}", _config.LogFolder);
             FileUrlsLog = new FileJson($"{GetType().Name}{"ErrorItens.json"}", _config.LogFolder);
         }
 
@@ -225,12 +217,6 @@ namespace MisterSpider
             ParallelManager.StartWait();
         }
 
-        public void Go(object tag)
-        {
-            Tag = tag;
-            Go();
-        }
-
         protected void FetchNewPage(Url url)
         {
             string link = url.uri.AbsoluteUri;
@@ -258,7 +244,6 @@ namespace MisterSpider
                 {
                     if (item != null)
                     {
-                        // FileManager.Write(item);
                         ExtractData.Add(item);
                     }
                     ParallelManager.IncrementItensProcess();
@@ -300,11 +285,11 @@ namespace MisterSpider
 
                 if (url.ToLower().EndsWith(".gz"))
                 {
-                    HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
-                    req.Timeout = 1000 * 60 * 60; // milliseconds  
+                    HttpClient req = new HttpClient();
+                    req.Timeout = new TimeSpan(0, 0, 1);
                     try
                     {
-                        using (Stream responseStream = req.GetResponse().GetResponseStream())
+                        using (Stream responseStream = req.GetAsync(url).Result.Content.ReadAsStream())
                         {
                             GZipStream zip = new GZipStream(responseStream, CompressionMode.Decompress);
                             xml.Load(zip);
@@ -473,20 +458,17 @@ namespace MisterSpider
                 Directory.CreateDirectory(path);
             }
 
-            using (WebClient client = new WebClient())
+            using (HttpClient httpClient = new HttpClient())
             {
-                client.DownloadFileAsync(uri, path + filename);
+                using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri))
+                {
+                    using (Stream contentStream = httpClient.Send(request).Content.ReadAsStream(), stream = new FileStream(path + filename, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true))
+                    {
+                        contentStream.CopyToAsync(stream);
+                    }
+                }
             }
         }
 
-        void ISpider<T>.Go()
-        {
-            throw new NotImplementedException();
-        }
-
-        void ISpider<T>.Go(object tag)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

@@ -1,17 +1,20 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Net.Http.Headers;
 using System;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 
 namespace MisterSpider
 {
     public class NetConnection : INetConnection
-    {     
+    {
         private ConfigOptions _config;
+
         protected ILogger _logger { get; }
 
-        public NetConnection(ILogger logger, IOptions<ConfigOptions> config)
+        public NetConnection(ILogger<NetConnection> logger, IOptions<ConfigOptions> config)
         {
             _logger = logger;
             _config = config.Value;
@@ -27,34 +30,40 @@ namespace MisterSpider
             return ReadPage(GetResponse(absoluteUri));
         }
 
-        protected virtual HttpWebRequest GetHttpWebRequest(string url)
+        protected virtual HttpClient GetHttpClient(HttpClientHandler httpClientHandler)
         {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.UserAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36";
-            request.Proxy = null;
+            HttpClient client = httpClientHandler == null ? new HttpClient() : new HttpClient(httpClientHandler);
+            client.DefaultRequestHeaders.Add(HeaderNames.UserAgent, "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36");
 
-            return request;
+            return client;
         }
 
-        private HttpWebResponse GetResponse(string url)
+        private HttpResponseMessage GetResponse(string url)
         {
-            HttpWebResponse response = null;
-            _logger.LogError("Loading new page, {0}", url);
+            HttpResponseMessage response = null;
+            HttpClientHandler httpClientHandler = null;
+
+            _logger.LogDebug("Loading new page, {0}", url);
 
             try
             {
-                HttpWebRequest request = GetHttpWebRequest(url);
-
-                if (_config.IpAddress != null)
+                if (!string.IsNullOrWhiteSpace(_config.WebProxyAddress))
                 {
-                    WebProxy myProxy = new WebProxy(_config.IpAddress.Address.ToString(), _config.IpAddress.Port);
-
                     //United States proxy, from http://www.hidemyass.com/proxy-list/
-                    myProxy.BypassProxyOnLocal = true;
-                    request.Proxy = myProxy;
-                }
+                    // myProxy.BypassProxyOnLocal = true;
+                    httpClientHandler = new HttpClientHandler()
+                    {
+                        Proxy = new WebProxy(_config.WebProxyAddress, true),
+                        PreAuthenticate = true,
+                        UseDefaultCredentials = false,
+                        // DefaultProxyCredentials = CredentialCache.DefaultCredentials,
+                    };
 
-                response = (HttpWebResponse)request.GetResponse();
+                    //request.Proxy = myProxy;
+                }
+                HttpClient request = GetHttpClient(httpClientHandler);
+
+                response = request.GetAsync(url).Result;
                 switch (response.StatusCode)
                 {
                     case HttpStatusCode.Accepted: break;
@@ -93,17 +102,14 @@ namespace MisterSpider
             return response;
         }
 
-        protected string ReadPage(HttpWebResponse response)
+        protected string ReadPage(HttpResponseMessage response)
         {
             string html = string.Empty;
             if (response == null) return html;
-            
+
             try
             {
-                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
-                {
-                    html = reader.ReadToEnd();
-                }
+                html = response.Content.ReadAsStringAsync().Result;
                 response.Dispose();
             }
             catch (NullReferenceException ex)

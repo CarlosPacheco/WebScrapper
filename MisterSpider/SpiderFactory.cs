@@ -15,7 +15,13 @@ namespace MisterSpider
 
         public ISpider<T> GetSpider<T>(Type spiderType)
         {
-            return (ISpider<T>)ActivatorUtilities.CreateInstance(_provider, spiderType, BindingFlags.CreateInstance | BindingFlags.Public | BindingFlags.Instance | BindingFlags.OptionalParamBinding);
+            return (ISpider<T>)ActivatorUtilities.CreateInstance(_provider, spiderType);
         }
+
+        public ISpider<T> GetSpider<T>(Type spiderType, params object[] parameters)
+        {
+            return (ISpider<T>)ActivatorUtilities.CreateInstance(_provider, spiderType, parameters);
+        }
+
     }
 }

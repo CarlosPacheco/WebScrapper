@@ -11,12 +11,10 @@ namespace MisterSpider.Spiders
 {
     public class BookingPriceSpider : Spider<double>
     {
-        private SpiderParams _spiderParams { get { return (SpiderParams)Tag; } }
-
-        public BookingPriceSpider(ILogger<BookingPriceSpider> logger, INetConnection connection, IOptions<ConfigOptions> config) : base(logger, connection, config)
+        public BookingPriceSpider(ILogger<BookingPriceSpider> logger, INetConnection connection, IOptions<ConfigOptions> config, SpiderParams spiderParams) : base(logger, connection, config)
         {
-            Connection = new NetConnectionBooking(logger, config);
-            Urls = new List<string> { string.Format("{0}?checkin={1};checkout={2};dist=0;group_adults={3};group_children={4};selected_currency={5}", "http://www.booking.com/hotel/pt/foreign-friend-lisbon.pt-pt.html", _spiderParams.CheckIn, _spiderParams.CheckOut, _spiderParams.Adults, _spiderParams.Children, _spiderParams.Currency) };
+            // Connection = new NetConnectionBooking(logger, config);
+            Urls = new List<string> { string.Format("{0}?checkin={1};checkout={2};dist=0;group_adults={3};group_children={4};selected_currency={5}", "http://www.booking.com/hotel/pt/foreign-friend-lisbon.pt-pt.html", spiderParams.CheckIn, spiderParams.CheckOut, spiderParams.Adults, spiderParams.Children, spiderParams.Currency) };
         }
 
         protected override double Crawl(Page page)

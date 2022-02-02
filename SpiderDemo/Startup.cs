@@ -3,8 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MisterSpider;
-using MisterSpider.Configurations;
 using Serilog;
+using SpiderDemo.Model;
+using SpiderDemo.Spiders;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -18,7 +19,8 @@ namespace SpiderDemo
         {
             services.AddSingleton(config => Configuration);
             // IoC Logger 
-            services.AddSingleton(Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(Configuration).CreateLogger());
+            Serilog.ILogger logger = Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(Configuration).CreateLogger();
+            services.AddSingleton(logger);
             //ConfigOptions config = Configuration.GetSection(ConfigOptions.Position).Get<ConfigOptions>();
 
             // Add functionality to inject IOptions<T>
@@ -41,12 +43,14 @@ namespace SpiderDemo
         private readonly IHostApplicationLifetime _appLifetime;
 
         private readonly IWebScrapperManager _webScrapperManager;
+        private IServiceProvider _provider { get; }
 
-        public LifetimeEventsHostedService(ILogger<LifetimeEventsHostedService> logger, IWebScrapperManager webScrapperManager, IHostApplicationLifetime appLifetime)
+        public LifetimeEventsHostedService(ILogger<LifetimeEventsHostedService> logger, IWebScrapperManager webScrapperManager, IHostApplicationLifetime appLifetime, IServiceProvider provider)
         {
             _logger = logger;
             _webScrapperManager = webScrapperManager;
             _appLifetime = appLifetime;
+            _provider = provider;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -64,17 +68,15 @@ namespace SpiderDemo
         private void OnStarted()
         {
             _logger.LogInformation("OnStarted has been called.");
-            _webScrapperManager.Start<object>(new Dictionary<string, string>
-                {
-                      {"MisterSpider.Spiders.BookingSpider", "http://www.booking.com/hotel/pt/lisb-on-hostel.html"}
-                }, new SpiderParams
-                {
-                    CheckIn = Convert.ToDateTime("2021-08-03"),
-                    CheckOut = Convert.ToDateTime("2021-08-04"),
-                    Adults = "1",
-                    Children = "0",
-                    Nights = (Convert.ToDateTime("2021-08-04") - Convert.ToDateTime("2021-08-03")).Days.ToString(),
-                });
+            Company company = new Company
+            {
+                Symbol = "AMZN"
+            };
+
+            _webScrapperManager.Start<Company>(typeof(FinvizSpider), company);
+            _webScrapperManager.Start<Company>(typeof(MorningstarSpider), company, ActivatorUtilities.CreateInstance(_provider, typeof(NetConnectionMorningstar)));
+
+            ISpider<IList<Company>> stocks = _webScrapperManager.Start<IList<Company>>(typeof(DumbstockapiSpider));
             // Perform post-startup activities here
         }
 

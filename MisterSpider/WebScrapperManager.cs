@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 
 namespace MisterSpider
@@ -16,21 +15,14 @@ namespace MisterSpider
             _spiderFactory = spiderFactory;
         }
 
-        public List<T> Start<T>(Dictionary<string, string> scrappersURLs, object tag = null)
+        public IList<T> Start<T>(List<string> classTypes)
         {
-            List<string> spiderTypes = scrappersURLs.Keys.ToList();
-            return Start<T>(spiderTypes, tag);
-        }
-
-        public List<T> Start<T>(List<string> classTypes, object tag = null)
-        {
-            List<Thread> threads = new List<Thread>();
-            List<ISpider<T>> spiders = new List<ISpider<T>>();
+            IList<Thread> threads = new List<Thread>();
+            IList<ISpider<T>> spiders = new List<ISpider<T>>();
 
             foreach (string classType in classTypes)
             {
                 ISpider<T> spider = _spiderFactory.GetSpider<T>(Type.GetType(classType));
-                spider.Tag = tag;
 
                 //add the new spider
                 spiders.Add(spider);
@@ -55,6 +47,27 @@ namespace MisterSpider
             return data;
         }
 
+        public ISpider<T> Start<T>(string classType, params object[] parameters)
+        {
+            return Start<T>(Type.GetType(classType), parameters);
+        }
+
+        public ISpider<T> Start<T>(Type classType, params object[] parameters)
+        {
+            List<Thread> threads = new List<Thread>();
+            IList<ISpider<T>> spiders = new List<ISpider<T>>();
+
+            ISpider<T> spider = _spiderFactory.GetSpider<T>(classType, parameters);
+
+            Thread thread = new Thread(new ThreadStart(spider.Go));
+            threads.Add(thread);
+            thread.Start();
+            thread.Join();
+
+            _logger.LogDebug("Spider finished.");
+            return spider;
+        }
+
         public void Start(List<string> classTypes, TimeSpan sleepTime)
         {
             while (true)
@@ -63,5 +76,24 @@ namespace MisterSpider
                 Thread.Sleep(sleepTime);
             }
         }
+
+        public IList<SpiderConfiguration> Start<T>(IList<SpiderConfiguration> spiderConfigs)
+        {
+            if (spiderConfigs == null)
+            {
+                throw new ArgumentNullException("Configuration parameter is null.");
+            }
+
+            foreach (SpiderConfiguration spiderCofig in spiderConfigs)
+            {
+                ISpider<T> spider = Start<T>(spiderCofig.SpiderType, spiderCofig.Parameters);
+                spiderCofig.ExtractData.AddRange((IEnumerable<object>)spider.ExtractData);
+            }
+
+            _logger.LogDebug("Spider finished.");
+
+            return spiderConfigs;
+        }
+
     }
 }

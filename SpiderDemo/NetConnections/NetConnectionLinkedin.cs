@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using System;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 
 namespace MisterSpider
@@ -12,7 +13,7 @@ namespace MisterSpider
     {
         private string Cookie { get; set; }
 
-        public NetConnectionLinkedin(ILogger logger, IOptions<ConfigOptions> config) : base(logger, config)
+        public NetConnectionLinkedin(ILogger<NetConnectionLinkedin> logger, IOptions<ConfigOptions> config) : base(logger, config)
         {
         }
 
@@ -45,7 +46,7 @@ namespace MisterSpider
                 // request02.AllowAutoRedirect = false;
 
                 //Converting postData to Array of Bytes
-                byte[] byteArray = Encoding.ASCII.GetBytes(GetDataForm(ReadPage(response01)));
+                byte[] byteArray = null;// Encoding.ASCII.GetBytes(GetDataForm(ReadPage(response01)));
 
                 //Setting Content-Length Header of the Request
                 request02.ContentLength = byteArray.Length;
@@ -68,14 +69,14 @@ namespace MisterSpider
             }
         }
 
-        protected override HttpWebRequest GetHttpWebRequest(string url)
+        protected override HttpClient GetHttpClient(HttpClientHandler httpClientHandler)
         {
             GetCookie();
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("");
             request.UserAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36";
             request.Headers.Add(HttpRequestHeader.Cookie, Cookie);
 
-            return request;
+            return null;
         }
 
         private static string GetDataForm(string htmltext)

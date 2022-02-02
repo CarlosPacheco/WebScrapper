@@ -4,6 +4,6 @@
     {
         string Go(Url url);
 
-        string Go(string absoluteUri);      
+        string Go(string absoluteUri);
     }
 }
