@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Threading;
 using MisterSpider.Model;
 using MisterSpider.Extensions;
-using Newtonsoft.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 
 namespace MisterSpider.Spiders
 {
@@ -18,7 +18,7 @@ namespace MisterSpider.Spiders
         public LinkedinSpider(ILogger<LinkedinSpider> logger, INetConnection connection, IOptions<ConfigOptions> config) : base(logger, connection, config)
         {
             _searchWord = "hotel teatro porto";
-           // Connection = new NetConnectionLinkedin(logger, config);
+            // Connection = new NetConnectionLinkedin(logger, config);
             Urls = new List<string> { string.Format("https://www.linkedin.com/vsearch/p?type=people&keywords={0}", _searchWord) };
         }
 
@@ -31,7 +31,7 @@ namespace MisterSpider.Spiders
                 htmldoc = htmldoc.Remove(0, 4);
                 htmldoc = htmldoc.Remove(htmldoc.Length - 3, 3);
 
-                dynamic jsonData = JsonConvert.DeserializeObject(htmldoc);
+                dynamic jsonData = JsonSerializer.Deserialize<dynamic>(htmldoc);
 
                 var root = jsonData.content.page.voltron_unified_search_json.search;
                 var results = root.results;
@@ -56,9 +56,9 @@ namespace MisterSpider.Spiders
                 }
                 return null;
             }
-          
+
             return parse_details(page);
-            
+
         }
 
         private LinkedinItem parse_details(Page page)

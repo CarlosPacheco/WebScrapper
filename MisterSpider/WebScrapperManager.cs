@@ -5,10 +5,12 @@ using System.Threading;
 
 namespace MisterSpider
 {
-    public class WebScrapperManager : IWebScrapperManager
+    public class WebScrapperManager : IWebScrapperManager, IDisposable
     {
         private ILogger<WebScrapperManager> _logger { get; }
         private ISpiderFactory _spiderFactory { get; }
+        private IList<Thread> _threads = new List<Thread>();
+
         public WebScrapperManager(ILogger<WebScrapperManager> logger, ISpiderFactory spiderFactory)
         {
             _logger = logger;
@@ -17,7 +19,7 @@ namespace MisterSpider
 
         public IList<T> Start<T>(List<string> classTypes)
         {
-            IList<Thread> threads = new List<Thread>();
+
             IList<ISpider<T>> spiders = new List<ISpider<T>>();
 
             foreach (string classType in classTypes)
@@ -28,11 +30,11 @@ namespace MisterSpider
                 spiders.Add(spider);
 
                 Thread thread = new Thread(new ThreadStart(spider.Go));
-                threads.Add(thread);
+                _threads.Add(thread);
                 thread.Start();
             }
 
-            foreach (Thread thread in threads)
+            foreach (Thread thread in _threads)
             {
                 thread.Join();
             }
@@ -54,13 +56,12 @@ namespace MisterSpider
 
         public ISpider<T> Start<T>(Type classType, params object[] parameters)
         {
-            List<Thread> threads = new List<Thread>();
             IList<ISpider<T>> spiders = new List<ISpider<T>>();
 
             ISpider<T> spider = _spiderFactory.GetSpider<T>(classType, parameters);
 
             Thread thread = new Thread(new ThreadStart(spider.Go));
-            threads.Add(thread);
+            _threads.Add(thread);
             thread.Start();
             thread.Join();
 
@@ -95,5 +96,22 @@ namespace MisterSpider
             return spiderConfigs;
         }
 
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                foreach (Thread thread in _threads)
+                {
+                    if (thread.IsAlive)
+                        thread.Interrupt();
+                }
+            }
+        }
     }
 }

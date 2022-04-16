@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Net.Http.Headers;
 using System;
 using System.IO;
 using System.Net;
@@ -13,10 +12,12 @@ namespace MisterSpider
         private ConfigOptions _config;
 
         protected ILogger _logger { get; }
+        protected IHttpClientFactory _httpClientFactory { get; }
 
-        public NetConnection(ILogger<NetConnection> logger, IOptions<ConfigOptions> config)
+        public NetConnection(ILogger<NetConnection> logger, IOptions<ConfigOptions> config, IHttpClientFactory clientFactory)
         {
             _logger = logger;
+            _httpClientFactory = clientFactory;
             _config = config.Value;
         }
 
@@ -30,38 +31,21 @@ namespace MisterSpider
             return ReadPage(GetResponse(absoluteUri));
         }
 
-        protected virtual HttpClient GetHttpClient(HttpClientHandler httpClientHandler)
+        protected virtual HttpClient GetHttpClient()
         {
-            HttpClient client = httpClientHandler == null ? new HttpClient() : new HttpClient(httpClientHandler);
-            client.DefaultRequestHeaders.Add(HeaderNames.UserAgent, "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36");
-
+            HttpClient client = _httpClientFactory.CreateClient();
             return client;
         }
 
         private HttpResponseMessage GetResponse(string url)
         {
             HttpResponseMessage response = null;
-            HttpClientHandler httpClientHandler = null;
 
             _logger.LogDebug("Loading new page, {0}", url);
 
             try
             {
-                if (!string.IsNullOrWhiteSpace(_config.WebProxyAddress))
-                {
-                    //United States proxy, from http://www.hidemyass.com/proxy-list/
-                    // myProxy.BypassProxyOnLocal = true;
-                    httpClientHandler = new HttpClientHandler()
-                    {
-                        Proxy = new WebProxy(_config.WebProxyAddress, true),
-                        PreAuthenticate = true,
-                        UseDefaultCredentials = false,
-                        // DefaultProxyCredentials = CredentialCache.DefaultCredentials,
-                    };
-
-                    //request.Proxy = myProxy;
-                }
-                HttpClient request = GetHttpClient(httpClientHandler);
+                HttpClient request = GetHttpClient();
 
                 response = request.GetAsync(url).Result;
                 switch (response.StatusCode)
@@ -106,6 +90,7 @@ namespace MisterSpider
         {
             string html = string.Empty;
             if (response == null) return html;
+            if (!response.IsSuccessStatusCode) return html;
 
             try
             {

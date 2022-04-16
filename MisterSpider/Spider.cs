@@ -52,6 +52,11 @@ namespace MisterSpider
             _logger = logger;
             Connection = connection;
 
+            if(string.IsNullOrWhiteSpace(_config.LogFolder))
+            {
+                _logger.LogWarning("Are you missing the appsettings section Spider? or services.Configure<ConfigOptions>(Configuration.GetSection(ConfigOptions.Position))?");
+            }
+
             ParallelManager = new ThreadManager(config);
 
             FileUrlsLog = new FileJson($"{GetType().Name}{"ErrorItens.json"}", _config.LogFolder);

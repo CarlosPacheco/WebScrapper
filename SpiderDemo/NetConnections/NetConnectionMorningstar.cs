@@ -9,13 +9,13 @@ namespace MisterSpider
     {
         public string RefererParam { get; set; }
 
-        public NetConnectionMorningstar(ILogger<NetConnectionMorningstar> logger, IOptions<ConfigOptions> config) : base(logger, config)
+        public NetConnectionMorningstar(ILogger<NetConnectionMorningstar> logger, IOptions<ConfigOptions> config, IHttpClientFactory clientFactory) : base(logger, config, clientFactory)
         {
         }
 
-        protected override HttpClient GetHttpClient(HttpClientHandler httpClientHandler)
+        protected override HttpClient GetHttpClient()
         {
-            HttpClient request = httpClientHandler == null ? new HttpClient() : new HttpClient(httpClientHandler);
+            HttpClient request = _httpClientFactory.CreateClient();
             request.DefaultRequestHeaders.Add(HeaderNames.Referer, RefererParam);
 
             return request;

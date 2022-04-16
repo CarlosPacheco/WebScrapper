@@ -1,0 +1,8 @@
+version: '3.4'
+
+services:
+  spiderdemo:
+    image: ${DOCKER_REGISTRY-}spiderdemo
+    build:
+      context: .
+      dockerfile: SpiderDemo/Dockerfile
