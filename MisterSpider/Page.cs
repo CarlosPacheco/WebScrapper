@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 
 namespace MisterSpider
 {
-    public class Page
+    public class Page : IDisposable
     {
         private static Regex UrlPattern = new Regex(@"(href|src)=""[\d\w\/:#@%;$\(\)~_\?\+\-=\\\.&]*", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private ILogger _logger { get; }
@@ -18,6 +18,7 @@ namespace MisterSpider
         public Stream? Source { get; private set; }
 
         private HtmlDocument _document;
+        private bool disposedValue;
 
         public HtmlDocument Document
         {
@@ -109,6 +110,36 @@ namespace MisterSpider
         {
             string path = uri.AbsoluteUri.Remove(uri.AbsoluteUri.Length - uri.Segments.Last().Length);
             return new Uri(path);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    Source.Dispose();
+                    _document = null;
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        // ~Page()
+        // {
+        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        //     Dispose(disposing: false);
+        // }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

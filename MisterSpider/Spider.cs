@@ -253,7 +253,7 @@ namespace MisterSpider
                 return;
             }
 
-            Page page = new Page(_logger, url, Connection.Read(url));
+            using Page page = new Page(_logger, url, Connection.Read(url));
 
             if (page.Source != null)
             {
@@ -281,7 +281,6 @@ namespace MisterSpider
 
                     ParallelManager.IncrementItensProcess();
                     url.status = UrlStatus.Completed;
-                    page.Source.Dispose();
                 }
             }
             //if the page.source is null or empty this mean connection error
