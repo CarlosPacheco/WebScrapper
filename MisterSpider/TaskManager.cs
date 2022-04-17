@@ -15,7 +15,11 @@ namespace MisterSpider
         private int _itensProcessDoneCount;
 
         public int ItensToProcessCount { get { return _itensProcessDoneCount; } }
+
+        public bool IsCompleted => throw new NotImplementedException();
+
         private ConfigOptions _config;
+        private bool disposedValue;
 
         public TaskManager(IOptions<ConfigOptions> config)
         {
@@ -23,7 +27,7 @@ namespace MisterSpider
             _queueItensToProcess = new ConcurrentBag<Tuple<Action<Url>, Url>>();
         }
 
-        public void AddProcess(Action<Url> fetchNewPage, Url url)
+        public void Add(Action<Url> fetchNewPage, Url url)
         {
             _queueItensToProcess.Add(Tuple.Create(fetchNewPage, url));
         }
@@ -56,9 +60,38 @@ namespace MisterSpider
         {
         }
 
-        public void AddThreadPool(Action<Url> fetchNewPage, Url url)
+        public void Retry(Action<Url> fetchNewPage, Url url)
         {
-            AddProcess(fetchNewPage, url);
+            Add(fetchNewPage, url);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    // TODO: dispose managed state (managed objects)
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        // ~TaskManager()
+        // {
+        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        //     Dispose(disposing: false);
+        // }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

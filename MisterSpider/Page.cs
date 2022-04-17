@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -10,26 +11,37 @@ namespace MisterSpider
 {
     public class Page
     {
-        private static Regex UrlPattern = new Regex(@"(href|src)=""[\d\w\/:#@%;$\(\)~_\?\+\-=\\\.&]*", RegexOptions.Compiled | RegexOptions.IgnoreCase); 
+        private static Regex UrlPattern = new Regex(@"(href|src)=""[\d\w\/:#@%;$\(\)~_\?\+\-=\\\.&]*", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private ILogger _logger { get; }
         private List<Url> UrlList { get; set; }
         public Url Url { get; private set; }
-        public string Source { get; private set; }
-        public HtmlDocument document { get; private set; }
+        public Stream? Source { get; private set; }
 
-        public Page(ILogger logger, Url url, string source)
+        private HtmlDocument _document;
+
+        public HtmlDocument Document
+        {
+            get
+            {
+                if (_document != null || Source == null) return _document;
+                _document = new HtmlDocument();
+                _document.Load(Source);
+                return _document;
+            }
+        }
+
+        public Page(ILogger logger, Url url, Stream source)
         {
             _logger = logger;
             Url = url;
             Source = source;
-            document = new HtmlDocument();
-            document.LoadHtml(source);
             UrlList = new List<Url>();
         }
 
         public void FetchAllUrls(int depth)
         {
-            MatchCollection matches = UrlPattern.Matches(Source);
+            using StreamReader sr = new StreamReader(Source);
+            MatchCollection matches = UrlPattern.Matches(sr.ReadToEnd());
 
             foreach (Match match in matches)
             {
@@ -37,7 +49,7 @@ namespace MisterSpider
 
                 if (!string.IsNullOrEmpty(cleanUrl))
                 {
-                    Url url = new Url(new Uri(cleanUrl), depth + 1);
+                    Url url = new Url(new Uri(cleanUrl), depth + 1, UrlStatus.Queue);
 
                     UrlList.Add(url);
                     _logger.LogInformation("Grabbed URL from page", url.uri.AbsoluteUri);
@@ -68,9 +80,9 @@ namespace MisterSpider
                             uri = new Uri(Url.uri.AbsoluteUri + cleanUrl.ToString());
                         }
                     }
-                    else 
-                    { 
-                        uri = new Uri(cleanUrl.ToString()); 
+                    else
+                    {
+                        uri = new Uri(cleanUrl.ToString());
                     }
 
                     UriBuilder uriBuilder = new UriBuilder(uri);

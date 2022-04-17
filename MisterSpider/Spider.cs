@@ -24,11 +24,13 @@ namespace MisterSpider
 
         private ConfigOptions _config;
 
+        private bool disposedValue;
+
         public ConcurrentBag<T> ExtractData { get; } = new ConcurrentBag<T>();
 
-        protected ConcurrentBag<string> UrlsSeen { get; set; } = new ConcurrentBag<string>();
-
         protected virtual bool UseSitemap { get { return false; } }
+
+        protected ConcurrentBag<Url> UrlsSeen { get; set; } = new ConcurrentBag<Url>();
 
         /// <summary>
         /// Seed URLs go here. These are the root URLs the crawler will visit first. They will always be 
@@ -46,23 +48,39 @@ namespace MisterSpider
         /// </summary>
         protected FileJson FileUrlsLog { get; set; }
 
-        protected Spider(ILogger<Spider<T>> logger, INetConnection connection, IOptions<ConfigOptions> config)
+        public Action OnSpiderError { get; }
+
+        public UrlProcessError OnUrlProcessError { get; }
+
+        protected Spider(ILogger<Spider<T>> logger, INetConnection connection, IOptions<ConfigOptions> config, IParallelManager parallelManager)
         {
             _config = config.Value;
             _logger = logger;
             Connection = connection;
-
-            if(string.IsNullOrWhiteSpace(_config.LogFolder))
-            {
-                _logger.LogWarning("Are you missing the appsettings section Spider? or services.Configure<ConfigOptions>(Configuration.GetSection(ConfigOptions.Position))?");
-            }
-
-            ParallelManager = new ThreadManager(config);
+            ParallelManager = parallelManager;
 
             FileUrlsLog = new FileJson($"{GetType().Name}{"ErrorItens.json"}", _config.LogFolder);
         }
 
+        /*
+             Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+                .MinimumLevel.Override("System", LogEventLevel.Information)
+                .MinimumLevel.Override("Microsoft.AspNetCore.Authentication", LogEventLevel.Information)
+                .Enrich.FromLogContext()
+                .WriteTo.ApplicationInsights(TelemetryConfiguration.Active, TelemetryConverter.Traces)
+                .WriteTo.File(@"jpProject_sso_log-.txt", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 5)
+                .WriteTo.Console()
+                .CreateLogger();
+         
+         */
         protected abstract T Crawl(Page page);
+
+        protected virtual bool ShouldReprocess(Url url)
+        {
+            return false;
+        }
 
         #region AddProcess
         /// <summary>
@@ -72,9 +90,9 @@ namespace MisterSpider
         /// <returns></returns>
         protected bool AddProcess(Url url)
         {
-            string link = url.uri.AbsoluteUri.ToLower();
+            string link = url.link;
 
-            if (UrlsSeen.Contains(link))
+            if (UrlsSeen.Any(u => u.link == link))
                 _logger.LogInformation("Skipping...URL already queued", link);
             else if (_config.UseWhiteList && !IsWhiteListedDomain(url.uri.Authority))
                 _logger.LogInformation("URL domain not on whitelist", link);
@@ -84,13 +102,13 @@ namespace MisterSpider
                 _logger.LogInformation("Skipping...file type is excluded", link);
             else if (ShouldDownload(link))
             {
-                UrlsSeen.Add(link);
-                Download(url.uri);
+                UrlsSeen.Add(url);
+                Download(url);
             }
             else if (ShouldContinue(url.depth))
             {
-                UrlsSeen.Add(link);
-                ParallelManager.AddProcess(FetchNewPage, url);
+                UrlsSeen.Add(url);
+                ParallelManager.Add(FetchNewPage, url);
                 return true;
             }
             return false;
@@ -105,7 +123,7 @@ namespace MisterSpider
         /// <returns></returns>
         protected bool AddProcess(string urllink)
         {
-            return AddProcess(new Url(new Uri(urllink), -1));
+            return AddProcess(new Url(new Uri(urllink), -1, UrlStatus.Queue));
         }
 
         /// <summary>
@@ -119,7 +137,7 @@ namespace MisterSpider
             bool ret = true;
             foreach (var item in urllinks)
             {
-                ret = AddProcess(new Url(new Uri(item), -1));
+                ret = AddProcess(new Url(new Uri(item), -1, UrlStatus.Queue));
             }
 
             return ret;
@@ -134,7 +152,7 @@ namespace MisterSpider
         /// <returns></returns>
         protected bool AddProcess(string urllink, int depth)
         {
-            return AddProcess(new Url(new Uri(urllink), depth));
+            return AddProcess(new Url(new Uri(urllink), depth, UrlStatus.Queue));
         }
 
         /// <summary>
@@ -149,7 +167,7 @@ namespace MisterSpider
             bool ret = true;
             foreach (var item in urllinks)
             {
-                ret = AddProcess(new Url(new Uri(item), depth));
+                ret = AddProcess(new Url(new Uri(item), depth, UrlStatus.Queue));
             }
 
             return ret;
@@ -165,7 +183,7 @@ namespace MisterSpider
         /// <returns></returns>
         protected bool AddProcess(string urllink, Page page)
         {
-            return AddProcess(new Url(new Uri(page.CleanUrl(urllink)), page.Url.depth + 1));
+            return AddProcess(new Url(new Uri(page.CleanUrl(urllink)), page.Url.depth + 1, UrlStatus.Queue));
         }
 
         /// <summary>
@@ -179,10 +197,10 @@ namespace MisterSpider
         protected bool AddProcess(List<string> urllinks, Page page)
         {
             bool ret = true;
-            var depth = page.Url.depth;
-            foreach (var item in urllinks)
+            int depth = page.Url.depth;
+            foreach (string item in urllinks)
             {
-                ret = AddProcess(new Url(new Uri(page.CleanUrl(item)), depth + 1));
+                ret = AddProcess(new Url(new Uri(page.CleanUrl(item)), depth + 1, UrlStatus.Queue));
             }
 
             return ret;
@@ -192,16 +210,16 @@ namespace MisterSpider
 
         protected void DownloadFile(string urllink)
         {
-            Url url = new Url(new Uri(urllink), -1);
-            UrlsSeen.Add(urllink);
-            Download(url.uri);
+            Url url = new Url(new Uri(urllink), -1, UrlStatus.Queue);
+            UrlsSeen.Add(url);
+            Download(url);
         }
 
         protected void DownloadFile(string urllink, Page page)
         {
-            Url url = new Url(new Uri(urllink), page.Url.depth);
-            UrlsSeen.Add(urllink);
-            Download(url.uri);
+            Url url = new Url(new Uri(urllink), page.Url.depth, UrlStatus.Queue);
+            UrlsSeen.Add(url);
+            Download(url);
         }
 
         public void Go()
@@ -215,7 +233,7 @@ namespace MisterSpider
 
             if (urls.Count == 0)
             {
-                Console.WriteLine("Need at least one seed URL.");
+                _logger.LogInformation("Need at least one seed URL.");
             }
 
             //wait for all threads
@@ -224,10 +242,20 @@ namespace MisterSpider
 
         protected void FetchNewPage(Url url)
         {
+            url.status = UrlStatus.Process;
             string link = url.uri.AbsoluteUri;
-            Page page = new Page(_logger, url, Connection.Go(url));
 
-            if (!string.IsNullOrEmpty(page.Source))
+            if (ShouldReprocess(url))
+            {
+                //put the url back to the queue
+                ParallelManager.Retry(FetchNewPage, url);
+                _logger.LogInformation("Queuing again this url, {0}", link);
+                return;
+            }
+
+            Page page = new Page(_logger, url, Connection.Read(url));
+
+            if (page.Source != null)
             {
                 _logger.LogInformation("Page load successful, {0}", link);
                 T item = default;
@@ -244,28 +272,30 @@ namespace MisterSpider
                     {
                         FileUrlsLog.Write(page.Url);
                     }
+                    if (OnSpiderError != null) OnSpiderError();
+                    if (OnUrlProcessError != null) OnUrlProcessError(url);
                 }
                 finally
                 {
-                    if (item != null)
-                    {
-                        ExtractData.Add(item);
-                    }
+                    if (item != null) ExtractData.Add(item);
+
                     ParallelManager.IncrementItensProcess();
+                    url.status = UrlStatus.Completed;
+                    page.Source.Dispose();
                 }
             }
-            else//if the page.source is null or empty this mean connection error
+            //if the page.source is null or empty this mean connection error
+            else if (_config.TryAgainOnError)
             {
-                if (_config.TryAgainOnError)
-                {
-                    //put the url back to the queue
-                    ParallelManager.AddThreadPool(FetchNewPage, url);
-                    _logger.LogInformation("Queuing again this url, {0}", link);
-                }
-                else
-                {
-                    ParallelManager.IncrementItensProcess();
-                }
+                url.status = UrlStatus.Retry;
+                //put the url back to the queue
+                ParallelManager.Retry(FetchNewPage, url);
+                _logger.LogInformation("Queuing again this url, {0}", link);
+            }
+            else
+            {
+                ParallelManager.IncrementItensProcess();
+                url.status = UrlStatus.Completed;
             }
         }
 
@@ -306,6 +336,7 @@ namespace MisterSpider
                         errorCount++;
                         if (errorCount > 6) return urls;//try only 6 times
                         URLQueue.Enqueue(url);
+                        if (OnSpiderError != null) OnSpiderError();
                         continue;
                     }
 
@@ -378,6 +409,7 @@ namespace MisterSpider
             {
                 _logger.LogError("IsExcludedDomain", ex);
                 isExcluded = true;
+                if (OnSpiderError != null) OnSpiderError();
             }
             return isExcluded;
         }
@@ -444,10 +476,11 @@ namespace MisterSpider
             return isWhiteListed;
         }
 
-        public void Download(Uri uri)
+        public void Download(Url url)
         {
             Thread.Sleep(IdleTime());
-
+            url.status = UrlStatus.Process;
+            Uri uri = url.uri;
             string filename = Path.GetFileName(uri.LocalPath);
 
             UriBuilder uriBuilder = new UriBuilder(uri.AbsoluteUri);
@@ -473,7 +506,36 @@ namespace MisterSpider
                     }
                 }
             }
+            url.status = UrlStatus.Completed;
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    ParallelManager.Dispose();
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        // ~Spider()
+        // {
+        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        //     Dispose(disposing: false);
+        // }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
     }
 }

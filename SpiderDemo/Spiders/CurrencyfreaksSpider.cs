@@ -11,7 +11,7 @@ namespace SpiderDemo.Spiders
 {
     public class CurrencyfreaksSpider : Spider<IList<Company>>
     {
-        public CurrencyfreaksSpider(ILogger<Spider<IList<Company>>> logger, INetConnection connection, IOptions<ConfigOptions> config) : base(logger, connection, config)
+        public CurrencyfreaksSpider(ILogger<Spider<IList<Company>>> logger, INetConnection connection, IOptions<ConfigOptions> config, IParallelManager parallelManager) : base(logger, connection, config, parallelManager)
         {
             Urls = new List<string>
             {

@@ -10,14 +10,14 @@ namespace MisterSpider.Spiders
 {
     public class BookingSpider : Spider<BookingItem>
     {
-        public BookingSpider(ILogger<BookingSpider> logger, INetConnection connection, IOptions<ConfigOptions> config) : base(logger, connection, config)
+        public BookingSpider(ILogger<BookingSpider> logger, INetConnection connection, IOptions<ConfigOptions> config, IParallelManager parallelManager) : base(logger, connection, config, parallelManager)
         {
             Urls = new List<string> { "http://www.booking.com/hotel/pt/pestanaportohotel.en-gb.html" };
         }
 
         protected override BookingItem Crawl(Page page)
         {
-            var htmldoc = page.document.DocumentNode.SelectSingleNode("//div[contains(@id, 'blockdisplay1')]");
+            var htmldoc = page.Document.DocumentNode.SelectSingleNode("//div[contains(@id, 'blockdisplay1')]");
 
             BookingItem item = new BookingItem();
 

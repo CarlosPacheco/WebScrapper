@@ -13,7 +13,7 @@ namespace SpiderDemo.Spiders
     {
         public Company Company;
 
-        public FinvizSpider(ILogger<Spider<Company>> logger, INetConnection connection, IOptions<ConfigOptions> config, Company spiderParams) : base(logger, connection, config)
+        public FinvizSpider(ILogger<Spider<Company>> logger, INetConnection connection, IOptions<ConfigOptions> config, IParallelManager parallelManager, Company spiderParams) : base(logger, connection, config, parallelManager)
         {
             Company = spiderParams;
             Urls = new List<string>
@@ -24,7 +24,7 @@ namespace SpiderDemo.Spiders
 
         protected override Company Crawl(Page page)
         {
-            var htmldoc = page.document.DocumentNode.SelectSingleNode("//div[contains(@class, 'fv-container')]");
+            var htmldoc = page.Document.DocumentNode.SelectSingleNode("//div[contains(@class, 'fv-container')]");
             Company.Name = htmldoc.SelectNodes("//table[contains(@class, 'fullview-title')]//a[contains(@class, 'tab-link')]/b").Extract();
             HtmlNodeCollection headerDoc = htmldoc.SelectNodes("//table[contains(@class, 'fullview-title')]//td[contains(@class, 'fullview-links')]/a");
             Company.Sector = headerDoc[0].Extract();

@@ -11,7 +11,7 @@ namespace MisterSpider.Spiders
 {
     public class BookingPriceSpider : Spider<double>
     {
-        public BookingPriceSpider(ILogger<BookingPriceSpider> logger, INetConnection connection, IOptions<ConfigOptions> config, SpiderParams spiderParams) : base(logger, connection, config)
+        public BookingPriceSpider(ILogger<BookingPriceSpider> logger, INetConnection connection, IOptions<ConfigOptions> config, IParallelManager parallelManager, SpiderParams spiderParams) : base(logger, connection, config, parallelManager)
         {
             // Connection = new NetConnectionBooking(logger, config);
             Urls = new List<string> { string.Format("{0}?checkin={1};checkout={2};dist=0;group_adults={3};group_children={4};selected_currency={5}", "http://www.booking.com/hotel/pt/foreign-friend-lisbon.pt-pt.html", spiderParams.CheckIn, spiderParams.CheckOut, spiderParams.Adults, spiderParams.Children, spiderParams.Currency) };
@@ -26,7 +26,7 @@ namespace MisterSpider.Spiders
 
                 if (page.Url.depth == -1) //root
                 {
-                    var priceRows = page.document.DocumentNode.SelectNodes("//strong[contains(@class, 'rooms-table-room-price')]");
+                    var priceRows = page.Document.DocumentNode.SelectNodes("//strong[contains(@class, 'rooms-table-room-price')]");
                     if (priceRows == null)
                     {
                         return ret;

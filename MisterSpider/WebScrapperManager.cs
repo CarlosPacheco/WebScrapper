@@ -7,27 +7,39 @@ namespace MisterSpider
 {
     public class WebScrapperManager : IWebScrapperManager, IDisposable
     {
+        private bool disposedValue;
+
         private ILogger<WebScrapperManager> _logger { get; }
         private ISpiderFactory _spiderFactory { get; }
-        private IList<Thread> _threads = new List<Thread>();
+        private IList<Thread> _threads { get; }
+        private IList<ISpider> _spiders { get; }
+
+        // TODO:: add this in all the  start methods
+        //public readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
 
         public WebScrapperManager(ILogger<WebScrapperManager> logger, ISpiderFactory spiderFactory)
         {
             _logger = logger;
             _spiderFactory = spiderFactory;
+            _threads = new List<Thread>();
+            _spiders = new List<ISpider>();
         }
 
-        public IList<T> Start<T>(List<string> classTypes)
+        /// <summary>
+        /// Concurrent methos, each spider will run inside a thread
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="classTypes"></param>
+        /// <returns></returns>
+        public IList<T> StartConcurrent<T>(List<string> classTypes)
         {
-
-            IList<ISpider<T>> spiders = new List<ISpider<T>>();
-
+            if (disposedValue) return null;
             foreach (string classType in classTypes)
             {
                 ISpider<T> spider = _spiderFactory.GetSpider<T>(Type.GetType(classType));
 
                 //add the new spider
-                spiders.Add(spider);
+                _spiders.Add(spider);
 
                 Thread thread = new Thread(new ThreadStart(spider.Go));
                 _threads.Add(thread);
@@ -40,7 +52,7 @@ namespace MisterSpider
             }
 
             List<T> data = new List<T>();
-            foreach (ISpider<T> spider in spiders)
+            foreach (ISpider<T> spider in _spiders)
             {
                 data.AddRange(spider.ExtractData);
             }
@@ -49,46 +61,77 @@ namespace MisterSpider
             return data;
         }
 
-        public ISpider<T> Start<T>(string classType, params object[] parameters)
+        public T StartSingle<T>(string classType, params object[] parameters)
         {
-            return Start<T>(Type.GetType(classType), parameters);
+            return StartSingle<T>(Type.GetType(classType), parameters);
         }
 
-        public ISpider<T> Start<T>(Type classType, params object[] parameters)
+        public T StartSingle<T>(Type classType, params object[] parameters)
         {
-            IList<ISpider<T>> spiders = new List<ISpider<T>>();
-
+            if (disposedValue) return default;
             ISpider<T> spider = _spiderFactory.GetSpider<T>(classType, parameters);
+            //add the new spider
+            _spiders.Add(spider);
+            spider.Go();
 
-            Thread thread = new Thread(new ThreadStart(spider.Go));
-            _threads.Add(thread);
-            thread.Start();
-            thread.Join();
+            spider.ExtractData.TryTake(out T spiderData);
+            //add the new spider
+            lock (_spiders)
+            {
+                _spiders.Remove(spider);
+                spider.Dispose();
+            }
 
             _logger.LogDebug("Spider finished.");
-            return spider;
+            return spiderData;
         }
 
-        public void Start(List<string> classTypes, TimeSpan sleepTime)
+        public IList<T> StartSingleList<T>(Type classType, params object[] parameters)
+        {
+            if (disposedValue) return default;
+            ISpider<T> spider = _spiderFactory.GetSpider<T>(classType, parameters);
+            //add the new spider
+            _spiders.Add(spider);
+            spider.Go();
+
+            List<T> spiderData = new List<T>();
+            spiderData.AddRange(spiderData);
+
+            //add the new spider
+            lock (_spiders)
+            {
+                _spiders.Remove(spider);
+                spider.Dispose();
+            }
+
+            _logger.LogDebug("Spider finished.");
+            return spiderData;
+        }
+
+        /// <summary>
+        /// Concurrent methos, each spider will run inside a thread
+        /// </summary>
+        /// <param name="classTypes"></param>
+        /// <param name="sleepTime"></param>
+        public void StartConcurrent(List<string> classTypes, TimeSpan sleepTime)
         {
             while (true)
             {
-                Start<object>(classTypes);
+                StartConcurrent<object>(classTypes);
                 Thread.Sleep(sleepTime);
             }
         }
 
-        public IList<SpiderConfiguration> Start<T>(IList<SpiderConfiguration> spiderConfigs)
+        public IList<SpiderConfiguration<T>> Start<T>(IList<SpiderConfiguration<T>> spiderConfigs)
         {
             if (spiderConfigs == null)
             {
                 throw new ArgumentNullException("Configuration parameter is null.");
             }
 
-            foreach (SpiderConfiguration spiderCofig in spiderConfigs)
+            foreach (SpiderConfiguration<T> spiderCofig in spiderConfigs)
             {
-                ISpider<T> spider = Start<T>(spiderCofig.SpiderType, spiderCofig.Parameters);
-                spiderCofig.ExtractData.AddRange((IEnumerable<object>)spider.ExtractData);
+                spiderCofig.ExtractData = StartSingle<T>(spiderCofig.SpiderType, spiderCofig.Parameters);
             }
 
             _logger.LogDebug("Spider finished.");
@@ -96,22 +139,46 @@ namespace MisterSpider
             return spiderConfigs;
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    foreach (ISpider spider in _spiders)
+                    {
+                        spider.Dispose();
+                    }
+
+                    foreach (Thread thread in _threads)
+                    {
+                        if (thread.IsAlive)
+                        {
+                            thread.Interrupt();
+                            thread.Join(2000);// wait max 2 secs
+                        }
+                    }
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        // ~WebScrapperManager()
+        // {
+        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        //     Dispose(disposing: false);
+        // }
+
         public void Dispose()
         {
-            Dispose(true);
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                foreach (Thread thread in _threads)
-                {
-                    if (thread.IsAlive)
-                        thread.Interrupt();
-                }
-            }
-        }
     }
 }

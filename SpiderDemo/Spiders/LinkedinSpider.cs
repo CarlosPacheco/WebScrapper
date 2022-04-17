@@ -15,7 +15,7 @@ namespace MisterSpider.Spiders
 
         private int _count;
 
-        public LinkedinSpider(ILogger<LinkedinSpider> logger, INetConnection connection, IOptions<ConfigOptions> config) : base(logger, connection, config)
+        public LinkedinSpider(ILogger<LinkedinSpider> logger, INetConnection connection, IOptions<ConfigOptions> config, IParallelManager parallelManager) : base(logger, connection, config, parallelManager)
         {
             _searchWord = "hotel teatro porto";
             // Connection = new NetConnectionLinkedin(logger, config);
@@ -26,7 +26,7 @@ namespace MisterSpider.Spiders
         {
             if (page.Url.depth == -1) //root
             {
-                var htmldoc = page.document.DocumentNode.SelectSingleNode("//code[contains(@id, 'voltron_srp_main-content')]").ExtractDecode(false);
+                var htmldoc = page.Document.DocumentNode.SelectSingleNode("//code[contains(@id, 'voltron_srp_main-content')]").ExtractDecode(false);
                 //remove <!-- -->
                 htmldoc = htmldoc.Remove(0, 4);
                 htmldoc = htmldoc.Remove(htmldoc.Length - 3, 3);
@@ -65,7 +65,7 @@ namespace MisterSpider.Spiders
         {
             LinkedinItem item = new LinkedinItem();
 
-            var htmldoc = page.document.DocumentNode.SelectSingleNode("//div[contains(@id, 'top-card')]");
+            var htmldoc = page.Document.DocumentNode.SelectSingleNode("//div[contains(@id, 'top-card')]");
 
             item.Name = htmldoc.SelectSingleNode(".//div[contains(@id, 'name')]//span[contains(@class, 'full-name')]").Extract();
             item.Description = HtmlAgilityPackExtensions.RemoveHtmlTags(htmldoc.SelectSingleNode(".//div[contains(@id, 'headline')]/p[contains(@class, 'title')]").Extract());

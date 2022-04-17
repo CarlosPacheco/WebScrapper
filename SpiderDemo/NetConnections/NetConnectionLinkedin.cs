@@ -38,7 +38,7 @@ namespace MisterSpider
                 request02.DefaultRequestHeaders.Add(HeaderNames.KeepAlive, "true");
 
                 var todoItemJson = new StringContent(
-                                GetDataForm(ReadPage(response01)),
+                                GetDataForm(response01.Content.ReadAsStringAsync().Result),
                                 Encoding.ASCII,
                                 "application/x-www-form-urlencoded");
 

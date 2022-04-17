@@ -2,16 +2,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Microsoft.Net.Http.Headers;
 using MisterSpider;
 using Serilog;
 using SpiderDemo.Model;
 using SpiderDemo.Spiders;
 using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -24,18 +19,9 @@ namespace SpiderDemo
             services.AddSingleton(config => Configuration);
             // IoC Logger 
             services.AddSingleton(Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(Configuration).CreateLogger());
-            ConfigOptions config = Configuration.GetSection(ConfigOptions.Position).Get<ConfigOptions>();
-            // Add our Config object so it can be injected
-            services.Configure<ConfigOptions>(Configuration.GetSection(ConfigOptions.Position));
 
-            services.AddSingleton<INetConnection, NetConnection>();
-            services.AddSingleton<ISpiderFactory, SpiderFactory>();
+            services.AddMisterSpider(Configuration);
 
-            services.AddSingleton<IWebScrapperManager, WebScrapperManager>();
-            services.AddHttpClient(Options.DefaultName, httpClient =>
-            {
-                httpClient.DefaultRequestHeaders.Add(HeaderNames.UserAgent, "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36");
-            });
             //    .ConfigurePrimaryHttpMessageHandler(() =>
             //    new HttpClientHandler()
             //    {
@@ -57,7 +43,7 @@ namespace SpiderDemo
     {
         private readonly ILogger<LifetimeEventsHostedService> _logger;
         private readonly IHostApplicationLifetime _appLifetime;
-
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private readonly IWebScrapperManager _webScrapperManager;
         private IServiceProvider _provider { get; }
 
@@ -81,29 +67,48 @@ namespace SpiderDemo
             return Task.CompletedTask;
         }
 
+        Thread thread;
         private void OnStarted()
         {
             _logger.LogInformation("OnStarted has been called.");
-            Company company = new Company
+
+            thread = new Thread(new ThreadStart(RunApp));
+            thread.Start();
+        }
+
+        private void RunApp()
+        {
+            for (int i = 0; i < 15; i++)
             {
-                Symbol = "AMZN",
-                Exchange = "NASDAQ",
-            };
+                if (_cancellationTokenSource.Token.IsCancellationRequested) _cancellationTokenSource.Token.ThrowIfCancellationRequested();
 
-            //_webScrapperManager.Start<IList<Company>>(typeof(CurrencyfreaksSpider));
-            _webScrapperManager.Start<Company>(typeof(RoicSpider), company);
-            //_webScrapperManager.Start<Company>(typeof(FinvizSpider), company);
-            //_webScrapperManager.Start<Company>(typeof(MorningstarSpider), company, ActivatorUtilities.CreateInstance(_provider, typeof(NetConnectionMorningstar)));
+                Company company = new Company
+                {
+                    Symbol = "AMZN",
+                    Exchange = "NASDAQ",
+                };
 
-            ISpider<IList<Company>> stocks = _webScrapperManager.Start<IList<Company>>(typeof(DumbstockapiSpider));
-            // Perform post-startup activities here
+                //_webScrapperManager.Start<IList<Company>>(typeof(CurrencyfreaksSpider));
+
+                _webScrapperManager.StartSingle<Company>(typeof(FinvizSpider), company);
+                _webScrapperManager.StartSingle<Company>(typeof(MorningstarSpider), company, ActivatorUtilities.CreateInstance(_provider, typeof(NetConnectionMorningstar)));
+                _webScrapperManager.StartSingle<Company>(typeof(RoicSpider), company);
+
+                // ISpider<IList<Company>> stocks = _webScrapperManager.Start<IList<Company>>(typeof(DumbstockapiSpider));
+                // Perform post-startup activities here
+            }
         }
 
         private void OnStopped()
         {
             _logger.LogInformation("OnStopped has been called.");
-
             // Perform post-stopped activities here
+            if (thread.IsAlive)
+            {
+                _cancellationTokenSource.Cancel();
+                thread.Join();
+            }
+            _cancellationTokenSource.Dispose();
         }
     }
 }

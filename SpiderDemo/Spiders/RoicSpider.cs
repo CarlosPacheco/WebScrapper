@@ -17,7 +17,7 @@ namespace SpiderDemo.Spiders
         public Company Company;
         private const string _yearFormat = "MM/dd/yyyy";
 
-        public RoicSpider(ILogger<Spider<Company>> logger, INetConnection connection, IOptions<ConfigOptions> config, Company spiderParams) : base(logger, connection, config)
+        public RoicSpider(ILogger<Spider<Company>> logger, INetConnection connection, IOptions<ConfigOptions> config, IParallelManager parallelManager, Company spiderParams) : base(logger, connection, config, parallelManager)
         {
             Company = spiderParams;
             Urls = new List<string>
@@ -28,7 +28,7 @@ namespace SpiderDemo.Spiders
 
         protected override Company Crawl(Page page)
         {
-            HtmlNode htmldoc = page.document.DocumentNode.SelectSingleNode("//script[contains(@id, '__NEXT_DATA__')]");
+            HtmlNode htmldoc = page.Document.DocumentNode.SelectSingleNode("//script[contains(@id, '__NEXT_DATA__')]");
 
             if (htmldoc == null) return Company;
 

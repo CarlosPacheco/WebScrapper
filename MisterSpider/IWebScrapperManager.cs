@@ -5,14 +5,27 @@ namespace MisterSpider
 {
     public interface IWebScrapperManager
     {
-        IList<T> Start<T>(List<string> classTypes);
+        /// <summary>
+        /// Concurrent methos, each spider will run inside a thread
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="classTypes"></param>
+        /// <returns></returns>
+        IList<T> StartConcurrent<T>(List<string> classTypes);
 
-        ISpider<T> Start<T>(string classType, params object[] parameters);
+        T StartSingle<T>(string classType, params object[] parameters);
 
-        ISpider<T> Start<T>(Type classType, params object[] parameters);
+        T StartSingle<T>(Type classType, params object[] parameters);
 
-        void Start(List<string> classTypes, TimeSpan sleepTime);
+        IList<T> StartSingleList<T>(Type classType, params object[] parameters);
 
-        IList<SpiderConfiguration> Start<T>(IList<SpiderConfiguration> spiderConfigs);
+        /// <summary>
+        /// Concurrent methos, each spider will run inside a thread
+        /// </summary>
+        /// <param name="classTypes"></param>
+        /// <param name="sleepTime"></param>
+        void StartConcurrent(List<string> classTypes, TimeSpan sleepTime);
+
+        IList<SpiderConfiguration<T>> Start<T>(IList<SpiderConfiguration<T>> spiderConfigs);
     }
 }

@@ -17,7 +17,7 @@ namespace SpiderDemo.Spiders
     {
         public Company Company;
 
-        public PriceGoogleSpider(ILogger<Spider<Company>> logger, INetConnection connection, IOptions<ConfigOptions> config, Company spiderParams) : base(logger, connection, config)
+        public PriceGoogleSpider(ILogger<Spider<Company>> logger, INetConnection connection, IOptions<ConfigOptions> config, IParallelManager parallelManager, Company spiderParams) : base(logger, connection, config, parallelManager)
         {
             Company = spiderParams;
             Urls = new List<string>
@@ -28,7 +28,7 @@ namespace SpiderDemo.Spiders
 
         protected override Company Crawl(Page page)
         {
-            HtmlNode htmldoc = page.document.DocumentNode.SelectSingleNode("//span[contains(@id, 'last-price-value')]");
+            HtmlNode htmldoc = page.Document.DocumentNode.SelectSingleNode("//span[contains(@id, 'last-price-value')]");
 
             if (htmldoc == null) return Company;
 

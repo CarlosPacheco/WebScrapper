@@ -1,17 +1,18 @@
 ﻿using Microsoft.Extensions.Options;
 using System;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace MisterSpider
 {
-    public class ThreadManager : IParallelManager, IDisposable, IAsyncDisposable
+    public class ThreadManager : IParallelManager
     {
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private int _itensProcessDoneCount;
 
         private int _totalItensToProcessCount;
         public int ItensToProcessCount { get { return _totalItensToProcessCount - _itensProcessDoneCount; } }
+
+        public bool IsCompleted { get { return _itensProcessDoneCount == _totalItensToProcessCount; } }
 
         public AutoResetEvent AutoEvent { get; set; }
 
@@ -32,30 +33,40 @@ namespace MisterSpider
         /// </summary>
         /// <param name="fetchNewPage"></param>
         /// <param name="url"></param>
-        public void AddThreadPool(Action<Url> fetchNewPage, Url url)
+        protected void AddThreadPool(Action<Url> fetchNewPage, Url url)
         {
             ThreadPool.QueueUserWorkItem(new WaitCallback(
              (x) =>
              {
                  CancellationToken token = (CancellationToken)x;
                  if (token.IsCancellationRequested) token.ThrowIfCancellationRequested();
-                 
+
                  if (_config.ShouldSleep) Thread.Sleep(IdleTime());
                  fetchNewPage(url);
              }), _cancellationTokenSource.Token);
 
             //all done? signal the main thread
-            if (_itensProcessDoneCount == _totalItensToProcessCount) lock (AutoEvent) AutoEvent.Set();
+            if (IsCompleted) lock (AutoEvent) AutoEvent.Set();
         }
 
         /// <summary>
-        /// Add new item to process, this will increment the itens to process
+        /// Add new item to process, this will increment the itens count to process
         /// </summary>
         /// <param name="fetchNewPage"></param>
         /// <param name="url"></param>
-        public void AddProcess(Action<Url> fetchNewPage, Url url)
+        public void Add(Action<Url> fetchNewPage, Url url)
         {
             Interlocked.Increment(ref _totalItensToProcessCount);
+            AddThreadPool(fetchNewPage, url);
+        }
+
+        /// <summary>
+        /// Add new item to process, this NOT increment the itens count to process
+        /// </summary>
+        /// <param name="fetchNewPage"></param>
+        /// <param name="url"></param>
+        public void Retry(Action<Url> fetchNewPage, Url url)
+        {
             AddThreadPool(fetchNewPage, url);
         }
 
@@ -64,7 +75,7 @@ namespace MisterSpider
             Interlocked.Increment(ref _itensProcessDoneCount);
 
             //all done? signal the main thread
-            if (_itensProcessDoneCount == _totalItensToProcessCount) lock (AutoEvent) AutoEvent.Set();
+            if (IsCompleted) lock (AutoEvent) AutoEvent.Set();
         }
 
         public int IdleTime()
@@ -72,6 +83,9 @@ namespace MisterSpider
             return new Random().Next(_config.MinThreadIdleTime, _config.MaxThreadIdleTime + 1);
         }
 
+        /// <summary>
+        /// Wait until all itens are completed
+        /// </summary>
         public void StartWait()
         {
             AutoEvent.WaitOne();
@@ -83,29 +97,19 @@ namespace MisterSpider
             GC.SuppressFinalize(this);
         }
 
-        public async ValueTask DisposeAsync()
-        {
-            await DisposeAsyncCore().ConfigureAwait(false);
-            Dispose(false);
-            GC.SuppressFinalize(this);
-        }
-
         protected virtual void Dispose(bool disposing)
         {
             if (disposing)
             {
-                _cancellationTokenSource.Cancel();
-                lock (AutoEvent) AutoEvent.Set();
+                if (!IsCompleted)
+                {
+                    _cancellationTokenSource.Cancel();
+                    AutoEvent.WaitOne(5000);// wait max 5secs
+                    _cancellationTokenSource.Dispose();
+                }
 
-                _cancellationTokenSource.Dispose();
                 AutoEvent.Dispose();
             }
-        }
-
-        protected virtual async ValueTask DisposeAsyncCore()
-        {
-            _cancellationTokenSource.Cancel();
-            _cancellationTokenSource.Dispose();
         }
     }
 }

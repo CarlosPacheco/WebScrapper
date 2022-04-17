@@ -21,23 +21,22 @@ namespace MisterSpider
             _config = config.Value;
         }
 
-        public string Go(Url url)
+        public Stream? Read(Url url)
         {
-            return ReadPage(GetResponse(url.uri.AbsoluteUri));
+            return ReadPage(url.uri.AbsoluteUri);
         }
 
-        public string Go(string absoluteUri)
+        public Stream? Read(string absoluteUri)
         {
-            return ReadPage(GetResponse(absoluteUri));
+            return ReadPage(absoluteUri);
         }
 
         protected virtual HttpClient GetHttpClient()
         {
-            HttpClient client = _httpClientFactory.CreateClient();
-            return client;
+            return _httpClientFactory.CreateClient();
         }
 
-        private HttpResponseMessage GetResponse(string url)
+        private HttpResponseMessage? GetResponse(string url)
         {
             HttpResponseMessage response = null;
 
@@ -86,35 +85,25 @@ namespace MisterSpider
             return response;
         }
 
-        protected string ReadPage(HttpResponseMessage response)
+        protected Stream? ReadPage(string url)
         {
-            string html = string.Empty;
-            if (response == null) return html;
-            if (!response.IsSuccessStatusCode) return html;
+            HttpResponseMessage? response = GetResponse(url);
+
+            Stream? stream = null;
+            if (response == null) return stream;
+            if (!response.IsSuccessStatusCode) return stream;
 
             try
             {
-                html = response.Content.ReadAsStringAsync().Result;
-                response.Dispose();
-            }
-            catch (NullReferenceException ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-            catch (WebException ex)
-            {
-                _logger.LogError("Network Error: {0}\nStatus code: {1}", ex.Message, ex.Status);
-            }
-            catch (IOException ex)
-            {
-                _logger.LogError("I/O Error: {0}", ex.Message);
+                stream = response.Content.ReadAsStream();
             }
             catch (Exception ex)
             {
                 _logger.LogError("Fatal Error: {0}", ex.Message);
+                response?.Dispose();
             }
 
-            return html;
+            return stream;
         }
     }
 }

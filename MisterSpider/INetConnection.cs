@@ -1,9 +1,11 @@
-﻿namespace MisterSpider
+﻿using System.IO;
+
+namespace MisterSpider
 {
     public interface INetConnection
     {
-        string Go(Url url);
+        Stream Read(Url url);
 
-        string Go(string absoluteUri);
+        Stream Read(string absoluteUri);
     }
 }

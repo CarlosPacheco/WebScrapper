@@ -39,7 +39,7 @@ namespace MisterSpider
                 HttpResponseMessage response01 = request01.GetAsync(TargetUrl).Result;
                 Cookies = response01.Headers.GetValues(HeaderNames.SetCookie);
 
-                SessionToken = GetDataForm(ReadPage(response01));
+                SessionToken = GetDataForm(response01.Content.ReadAsStringAsync().Result);
 
             }
             catch (Exception ex)

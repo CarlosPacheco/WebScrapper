@@ -16,7 +16,7 @@ namespace SpiderDemo.Spiders
     {
         public Company Company;
 
-        public MorningstarSpider(ILogger<Spider<Company>> logger, IOptions<ConfigOptions> config, Company spiderParams, NetConnectionMorningstar connection) : base(logger, connection, config)
+        public MorningstarSpider(ILogger<Spider<Company>> logger, IOptions<ConfigOptions> config, IParallelManager parallelManager, Company spiderParams, NetConnectionMorningstar connection) : base(logger, connection, config, parallelManager)
         {
             string baseHost = "http://financials.morningstar.com/ajax/ReportProcess4CSV.html";
             Company = spiderParams;
@@ -33,7 +33,7 @@ namespace SpiderDemo.Spiders
         protected override Company Crawl(Page page)
         {
             Company company = Company;
-            using (StreamReader reader = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(page.Source ?? string.Empty))))
+            using (StreamReader reader = new StreamReader(page.Source))
             {
                 // skip the first line
                 string firstLine = reader.ReadLine();
