@@ -52,7 +52,7 @@ namespace MisterSpider
 
         public UrlProcessError OnUrlProcessError { get; }
 
-        public CancellationTokenSource CancellationToken { get { return ParallelManager.CancellationToken; } set { ParallelManager.CancellationToken = value; } }
+        public CancellationToken CancellationToken { get { return ParallelManager.CancellationToken; } set { ParallelManager.CancellationToken = value; } }
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         protected Spider(ILogger<Spider<T>> logger, INetConnection connection, IOptions<ConfigOptions> config, IParallelManager parallelManager)
@@ -516,7 +516,7 @@ namespace MisterSpider
             {
                 if (disposing)
                 {
-                    ParallelManager.Dispose();
+
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer

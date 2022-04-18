@@ -13,7 +13,7 @@ namespace MisterSpider
         private ISpiderFactory _spiderFactory { get; }
         private IList<Thread> _threads { get; }
         private IList<ISpider> _spiders { get; }
-        public CancellationTokenSource CancellationToken { get; set; }
+        public CancellationToken CancellationToken { get; set; }
 
         public WebScrapperManager(ILogger<WebScrapperManager> logger, ISpiderFactory spiderFactory)
         {
@@ -21,7 +21,7 @@ namespace MisterSpider
             _spiderFactory = spiderFactory;
             _threads = new List<Thread>();
             _spiders = new List<ISpider>();
-            CancellationToken = new CancellationTokenSource();
+            CancellationToken = new CancellationToken();
         }
 
         /// <summary>
@@ -33,7 +33,7 @@ namespace MisterSpider
         public IList<T> StartConcurrent<T>(List<string> classTypes)
         {
             List<T> data = new List<T>();
-            if (disposedValue) return data;
+            if (disposedValue || CancellationToken.IsCancellationRequested) return data;
             IList<ISpider> spiders = new List<ISpider>();
             foreach (string classType in classTypes)
             {
@@ -78,7 +78,7 @@ namespace MisterSpider
 
         public T? StartSingle<T>(Type classType, params object[] parameters)
         {
-            if (disposedValue) return default;
+            if (disposedValue || CancellationToken.IsCancellationRequested) return default;
             ISpider<T> spider = _spiderFactory.GetSpider<T>(classType, CancellationToken, parameters);
             //add the new spider
             _spiders.Add(spider);
@@ -99,7 +99,7 @@ namespace MisterSpider
         public IList<T> StartSingleList<T>(Type classType, params object[] parameters)
         {
             List<T> spiderData = new List<T>();
-            if (disposedValue) return spiderData;
+            if (disposedValue || CancellationToken.IsCancellationRequested) return spiderData;
             ISpider<T> spider = _spiderFactory.GetSpider<T>(classType, CancellationToken, parameters);
             //add the new spider
             _spiders.Add(spider);
@@ -165,7 +165,7 @@ namespace MisterSpider
                         if (thread.IsAlive)
                         {
                             thread.Interrupt();
-                            thread.Join(2000);// wait max 2 secs
+                            //thread.Join(2000);// wait max 2 secs
                         }
                     }
                 }

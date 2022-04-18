@@ -19,7 +19,7 @@ namespace MisterSpider
 
     public interface ISpider : IDisposable
     {
-        CancellationTokenSource CancellationToken { get; set; }
+        CancellationToken CancellationToken { get; set; }
     }
 
 }

@@ -29,6 +29,6 @@ namespace MisterSpider
 
         IList<SpiderConfiguration<T>> Start<T>(IList<SpiderConfiguration<T>> spiderConfigs);
 
-        CancellationTokenSource CancellationToken { get; set; }
+        CancellationToken CancellationToken { get; set; }
     }
 }

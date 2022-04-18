@@ -3,9 +3,9 @@ using System.Threading;
 
 namespace MisterSpider
 {
-    public interface IParallelManager : IDisposable
+    public interface IParallelManager
     {
-        CancellationTokenSource CancellationToken { get; set; }
+        CancellationToken CancellationToken { get; set; }
 
         int ItensToProcessCount { get; }
 

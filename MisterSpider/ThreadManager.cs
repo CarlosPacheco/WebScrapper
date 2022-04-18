@@ -15,7 +15,7 @@ namespace MisterSpider
 
         public AutoResetEvent AutoEvent { get; set; }
 
-        public CancellationTokenSource CancellationToken { get; set; }
+        public CancellationToken CancellationToken { get; set; }
 
         private ConfigOptions _config;
 
@@ -38,15 +38,21 @@ namespace MisterSpider
         /// <param name="url"></param>
         protected void AddThreadPool(Action<Url> fetchNewPage, Url url)
         {
-            ThreadPool.QueueUserWorkItem(new WaitCallback(
-             (x) =>
-             {
-                 CancellationToken token = (CancellationToken)x!;
-                 if (token.IsCancellationRequested) token.ThrowIfCancellationRequested();
+            if (CancellationToken.IsCancellationRequested) return;
 
-                 if (_config.ShouldSleep) Thread.Sleep(IdleTime());
-                 fetchNewPage(url);
-             }), CancellationToken.Token);
+            ThreadPool.QueueUserWorkItem(new WaitCallback(
+            (x) =>
+            {
+                CancellationToken token = (CancellationToken)x!;
+                if (!token.IsCancellationRequested && _config.ShouldSleep) Thread.Sleep(IdleTime());
+                if (token.IsCancellationRequested)
+                {
+                    lock (AutoEvent) AutoEvent.Set();
+                    return;
+                }
+
+                fetchNewPage(url);
+            }), CancellationToken);
 
             //all done? signal the main thread
             if (IsCompleted) lock (AutoEvent) AutoEvent.Set();
@@ -92,35 +98,6 @@ namespace MisterSpider
         public void StartWait()
         {
             AutoEvent.WaitOne();
-        }
-
-        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-        ~ThreadManager()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(false);
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                if (!IsCompleted)
-                {
-                    if (CancellationToken != null)
-                    {
-                        CancellationToken.Cancel();
-                        CancellationToken.Dispose();
-                    }
-
-                    AutoEvent?.Dispose();
-                }
-            }
         }
     }
 }

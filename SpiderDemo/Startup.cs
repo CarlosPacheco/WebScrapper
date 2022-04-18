@@ -79,10 +79,10 @@ namespace SpiderDemo
         {
             using IServiceScope? scope = _provider.CreateScope();
             using IWebScrapperManager _webScrapperManager = scope.ServiceProvider.GetService<IWebScrapperManager>()!;
-            _webScrapperManager.CancellationToken = _cancellationTokenSource;
-            for (int i = 0; i < 5; i++)
+            _webScrapperManager.CancellationToken = _cancellationTokenSource.Token;
+            for (int i = 0; i < 25; i++)
             {
-                if (_cancellationTokenSource.Token.IsCancellationRequested) _cancellationTokenSource.Token.ThrowIfCancellationRequested();
+                //if (_cancellationTokenSource.Token.IsCancellationRequested) _cancellationTokenSource.Token.ThrowIfCancellationRequested();
 
                 Company company = new Company
                 {
