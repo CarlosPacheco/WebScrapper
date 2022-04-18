@@ -52,6 +52,8 @@ namespace MisterSpider
 
         public UrlProcessError OnUrlProcessError { get; }
 
+        public CancellationTokenSource CancellationToken { get { return ParallelManager.CancellationToken; } set { ParallelManager.CancellationToken = value; } }
+
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         protected Spider(ILogger<Spider<T>> logger, INetConnection connection, IOptions<ConfigOptions> config, IParallelManager parallelManager)
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
@@ -60,7 +62,6 @@ namespace MisterSpider
             _logger = logger;
             Connection = connection;
             ParallelManager = parallelManager;
-
             FileUrlsLog = new FileJson($"{GetType().Name}{"ErrorItens.json"}", _config.LogFolder);
         }
 

@@ -6,7 +6,6 @@ namespace MisterSpider
 {
     public class ThreadManager : IParallelManager
     {
-        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private int _itensProcessDoneCount;
 
         private int _totalItensToProcessCount;
@@ -16,9 +15,13 @@ namespace MisterSpider
 
         public AutoResetEvent AutoEvent { get; set; }
 
+        public CancellationTokenSource CancellationToken { get; set; }
+
         private ConfigOptions _config;
 
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public ThreadManager(IOptions<ConfigOptions> config)
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _config = config.Value;
             _totalItensToProcessCount = _itensProcessDoneCount = 0;
@@ -43,7 +46,7 @@ namespace MisterSpider
 
                  if (_config.ShouldSleep) Thread.Sleep(IdleTime());
                  fetchNewPage(url);
-             }), _cancellationTokenSource.Token);
+             }), CancellationToken.Token);
 
             //all done? signal the main thread
             if (IsCompleted) lock (AutoEvent) AutoEvent.Set();
@@ -109,12 +112,14 @@ namespace MisterSpider
             {
                 if (!IsCompleted)
                 {
-                    _cancellationTokenSource.Cancel();
-                    AutoEvent.WaitOne(5000);// wait max 5secs
-                    _cancellationTokenSource.Dispose();
-                }
+                    if (CancellationToken != null)
+                    {
+                        CancellationToken.Cancel();
+                        CancellationToken.Dispose();
+                    }
 
-                AutoEvent.Dispose();
+                    AutoEvent?.Dispose();
+                }
             }
         }
     }

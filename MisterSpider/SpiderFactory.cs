@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Reflection;
+using System.Threading;
 
 namespace MisterSpider
 {
@@ -13,14 +13,18 @@ namespace MisterSpider
             _provider = provider;
         }
 
-        public ISpider<T> GetSpider<T>(Type spiderType)
+        public ISpider<T> GetSpider<T>(Type spiderType, CancellationTokenSource cancellationToken)
         {
-            return (ISpider<T>)ActivatorUtilities.CreateInstance(_provider, spiderType);
+            ISpider<T>? spider = (ISpider<T>)ActivatorUtilities.CreateInstance(_provider, spiderType);
+            spider.CancellationToken = cancellationToken;
+            return spider;
         }
 
-        public ISpider<T> GetSpider<T>(Type spiderType, params object[] parameters)
+        public ISpider<T> GetSpider<T>(Type spiderType, CancellationTokenSource cancellationToken, params object[] parameters)
         {
-            return (ISpider<T>)ActivatorUtilities.CreateInstance(_provider, spiderType, parameters);
+            ISpider<T>? spider = (ISpider<T>)ActivatorUtilities.CreateInstance(_provider, spiderType, parameters);
+            spider.CancellationToken = cancellationToken;
+            return spider;
         }
 
     }

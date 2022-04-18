@@ -13,9 +13,7 @@ namespace MisterSpider
         private ISpiderFactory _spiderFactory { get; }
         private IList<Thread> _threads { get; }
         private IList<ISpider> _spiders { get; }
-
-        // TODO:: add this in all the  start methods
-        //public readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
+        public CancellationTokenSource CancellationToken { get; set; }
 
         public WebScrapperManager(ILogger<WebScrapperManager> logger, ISpiderFactory spiderFactory)
         {
@@ -23,6 +21,7 @@ namespace MisterSpider
             _spiderFactory = spiderFactory;
             _threads = new List<Thread>();
             _spiders = new List<ISpider>();
+            CancellationToken = new CancellationTokenSource();
         }
 
         /// <summary>
@@ -40,7 +39,7 @@ namespace MisterSpider
             {
                 Type? type = Type.GetType(classType);
                 if (type == null) continue;
-                ISpider<T> spider = _spiderFactory.GetSpider<T>(type);
+                ISpider<T> spider = _spiderFactory.GetSpider<T>(type, CancellationToken);
 
                 //add the new spider
                 _spiders.Add(spider);
@@ -80,11 +79,11 @@ namespace MisterSpider
         public T? StartSingle<T>(Type classType, params object[] parameters)
         {
             if (disposedValue) return default;
-            ISpider<T> spider = _spiderFactory.GetSpider<T>(classType, parameters);
+            ISpider<T> spider = _spiderFactory.GetSpider<T>(classType, CancellationToken, parameters);
             //add the new spider
             _spiders.Add(spider);
             spider.Go();
-           
+
             spider.ExtractData.TryTake(out T? spiderData);
             //remove the new spider
             lock (_spiders)
@@ -101,11 +100,11 @@ namespace MisterSpider
         {
             List<T> spiderData = new List<T>();
             if (disposedValue) return spiderData;
-            ISpider<T> spider = _spiderFactory.GetSpider<T>(classType, parameters);
+            ISpider<T> spider = _spiderFactory.GetSpider<T>(classType, CancellationToken, parameters);
             //add the new spider
             _spiders.Add(spider);
             spider.Go();
-           
+
             spiderData.AddRange(spiderData);
 
             //add the new spider

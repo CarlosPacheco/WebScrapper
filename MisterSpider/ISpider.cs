@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Threading;
 
 namespace MisterSpider
 {
@@ -17,7 +18,8 @@ namespace MisterSpider
     public delegate void UrlProcessError(Url url);
 
     public interface ISpider : IDisposable
-    { 
+    {
+        CancellationTokenSource CancellationToken { get; set; }
     }
 
 }

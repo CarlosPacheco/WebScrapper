@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace MisterSpider
 {
-    public interface IWebScrapperManager: IDisposable
+    public interface IWebScrapperManager : IDisposable
     {
         /// <summary>
         /// Concurrent methos, each spider will run inside a thread
@@ -27,5 +28,7 @@ namespace MisterSpider
         void StartConcurrent(List<string> classTypes, TimeSpan sleepTime);
 
         IList<SpiderConfiguration<T>> Start<T>(IList<SpiderConfiguration<T>> spiderConfigs);
+
+        CancellationTokenSource CancellationToken { get; set; }
     }
 }

@@ -18,6 +18,8 @@ namespace MisterSpider
 
         public bool IsCompleted => throw new NotImplementedException();
 
+        public CancellationTokenSource CancellationToken { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
         private ConfigOptions _config;
         private bool disposedValue;
 

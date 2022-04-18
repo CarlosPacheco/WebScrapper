@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Threading;
 
 namespace MisterSpider
 {
     public interface IParallelManager : IDisposable
     {
+        CancellationTokenSource CancellationToken { get; set; }
+
         int ItensToProcessCount { get; }
 
         public bool IsCompleted { get; }
