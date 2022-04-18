@@ -31,8 +31,8 @@ namespace SpiderDemo.Spiders
             HtmlNode htmldoc = page.Document.DocumentNode.SelectSingleNode("//script[contains(@id, '__NEXT_DATA__')]");
 
             if (htmldoc == null) return Company;
-
             JsonNode? obj = JsonNode.Parse(htmldoc.Extract());
+            //htmldoc = null;  page.Document = null;
 
             JsonNode? data = obj?["props"]?["pageProps"]?["data"]?["data"];
             /* data["outlook"]

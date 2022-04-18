@@ -44,13 +44,12 @@ namespace SpiderDemo
         private readonly ILogger<LifetimeEventsHostedService> _logger;
         private readonly IHostApplicationLifetime _appLifetime;
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
-        private readonly IWebScrapperManager _webScrapperManager;
+        
         private IServiceProvider _provider { get; }
 
-        public LifetimeEventsHostedService(ILogger<LifetimeEventsHostedService> logger, IWebScrapperManager webScrapperManager, IHostApplicationLifetime appLifetime, IServiceProvider provider)
+        public LifetimeEventsHostedService(ILogger<LifetimeEventsHostedService> logger, IHostApplicationLifetime appLifetime, IServiceProvider provider)
         {
-            _logger = logger;
-            _webScrapperManager = webScrapperManager;
+            _logger = logger;      
             _appLifetime = appLifetime;
             _provider = provider;
         }
@@ -78,7 +77,9 @@ namespace SpiderDemo
 
         private void RunApp()
         {
-            for (int i = 0; i < 15; i++)
+            using IServiceScope? scope = _provider.CreateScope();
+            using IWebScrapperManager _webScrapperManager = scope.ServiceProvider.GetService<IWebScrapperManager>()!;
+            for (int i = 0; i < 5; i++)
             {
                 if (_cancellationTokenSource.Token.IsCancellationRequested) _cancellationTokenSource.Token.ThrowIfCancellationRequested();
 
@@ -91,12 +92,13 @@ namespace SpiderDemo
                 //_webScrapperManager.Start<IList<Company>>(typeof(CurrencyfreaksSpider));
 
                 _webScrapperManager.StartSingle<Company>(typeof(FinvizSpider), company);
-                _webScrapperManager.StartSingle<Company>(typeof(MorningstarSpider), company, ActivatorUtilities.CreateInstance(_provider, typeof(NetConnectionMorningstar)));
+                _webScrapperManager.StartSingle<Company>(typeof(MorningstarSpider), company, ActivatorUtilities.CreateInstance(scope.ServiceProvider, typeof(NetConnectionMorningstar)));
                 _webScrapperManager.StartSingle<Company>(typeof(RoicSpider), company);
 
                 // ISpider<IList<Company>> stocks = _webScrapperManager.Start<IList<Company>>(typeof(DumbstockapiSpider));
                 // Perform post-startup activities here
             }
+
         }
 
         private void OnStopped()
@@ -111,4 +113,5 @@ namespace SpiderDemo
             _cancellationTokenSource.Dispose();
         }
     }
+
 }

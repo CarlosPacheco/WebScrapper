@@ -15,7 +15,9 @@ namespace MisterSpider
         private string file { get; set; }
         private string path { get; set; }
         private List<string> LogFileLines { get; set; }
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public FileJson(string fileName, string folderpath)
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             file = fileName;
             path = folderpath;

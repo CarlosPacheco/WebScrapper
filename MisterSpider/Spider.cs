@@ -52,7 +52,9 @@ namespace MisterSpider
 
         public UrlProcessError OnUrlProcessError { get; }
 
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         protected Spider(ILogger<Spider<T>> logger, INetConnection connection, IOptions<ConfigOptions> config, IParallelManager parallelManager)
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _config = config.Value;
             _logger = logger;
@@ -254,11 +256,10 @@ namespace MisterSpider
             }
 
             using Page page = new Page(_logger, url, Connection.Read(url));
-
-            if (page.Source != null)
+            if (page.Source != null && page.Source.Length > 0)
             {
                 _logger.LogInformation("Page load successful, {0}", link);
-                T item = default;
+                T? item = default;
 
                 try
                 {
@@ -346,8 +347,8 @@ namespace MisterSpider
                 }
 
                 XmlNamespaceManager manager = new XmlNamespaceManager(xml.NameTable);
-                manager.AddNamespace("s", xml.DocumentElement.NamespaceURI); //Using xml's properties instead of hard-coded URI  
-                XmlNodeList xnList = xml.SelectNodes("/s:urlset/s:url/s:loc", manager);
+                manager.AddNamespace("s", xml.DocumentElement!.NamespaceURI); //Using xml's properties instead of hard-coded URI  
+                XmlNodeList xnList = xml.SelectNodes("/s:urlset/s:url/s:loc", manager)!;
                 var parallelLoop1 = xnList.Count;
 
                 //process the file rows
@@ -356,7 +357,7 @@ namespace MisterSpider
                 {
                     for (int i = range.Item1; i < range.Item2; i++)
                     {
-                        prevlocal.Add(xnList[i].InnerText);
+                        prevlocal.Add(xnList[i]!.InnerText);
                     }
                     return prevlocal;
                 }, (local) =>
@@ -483,7 +484,7 @@ namespace MisterSpider
             string filename = Path.GetFileName(uri.LocalPath);
 
             UriBuilder uriBuilder = new UriBuilder(uri.AbsoluteUri);
-            string path = _config.DownloadFolder + Regex.Replace(Path.GetDirectoryName(uriBuilder.Path), "/", "\\");
+            string path = _config.DownloadFolder + Regex.Replace(Path.GetDirectoryName(uriBuilder.Path)!, "/", "\\");
 
             if (!path.EndsWith("\\"))
             {
@@ -524,17 +525,16 @@ namespace MisterSpider
         }
 
         // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-        // ~Spider()
-        // {
-        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        //     Dispose(disposing: false);
-        // }
+        ~Spider()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(false);
+        }
 
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            Dispose(true);
         }
     }
 }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace MisterSpider
 {
-    public interface IWebScrapperManager
+    public interface IWebScrapperManager: IDisposable
     {
         /// <summary>
         /// Concurrent methos, each spider will run inside a thread
@@ -13,9 +13,9 @@ namespace MisterSpider
         /// <returns></returns>
         IList<T> StartConcurrent<T>(List<string> classTypes);
 
-        T StartSingle<T>(string classType, params object[] parameters);
+        T? StartSingle<T>(string classType, params object[] parameters);
 
-        T StartSingle<T>(Type classType, params object[] parameters);
+        T? StartSingle<T>(Type classType, params object[] parameters);
 
         IList<T> StartSingleList<T>(Type classType, params object[] parameters);
 

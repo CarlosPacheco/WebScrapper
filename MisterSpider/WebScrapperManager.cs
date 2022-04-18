@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace MisterSpider
 {
-    public class WebScrapperManager : IWebScrapperManager, IDisposable
+    public class WebScrapperManager : IWebScrapperManager
     {
         private bool disposedValue;
 
@@ -33,14 +33,18 @@ namespace MisterSpider
         /// <returns></returns>
         public IList<T> StartConcurrent<T>(List<string> classTypes)
         {
-            if (disposedValue) return null;
+            List<T> data = new List<T>();
+            if (disposedValue) return data;
+            IList<ISpider> spiders = new List<ISpider>();
             foreach (string classType in classTypes)
             {
-                ISpider<T> spider = _spiderFactory.GetSpider<T>(Type.GetType(classType));
+                Type? type = Type.GetType(classType);
+                if (type == null) continue;
+                ISpider<T> spider = _spiderFactory.GetSpider<T>(type);
 
                 //add the new spider
                 _spiders.Add(spider);
-
+                spiders.Add(spider);
                 Thread thread = new Thread(new ThreadStart(spider.Go));
                 _threads.Add(thread);
                 thread.Start();
@@ -51,31 +55,38 @@ namespace MisterSpider
                 thread.Join();
             }
 
-            List<T> data = new List<T>();
-            foreach (ISpider<T> spider in _spiders)
+            foreach (ISpider<T> spider in spiders)
+            {
+                _spiders.Remove(spider);
+            }
+
+            foreach (ISpider<T> spider in spiders)
             {
                 data.AddRange(spider.ExtractData);
+                spider.Dispose();
             }
 
             _logger.LogDebug("Spider finished.");
             return data;
         }
 
-        public T StartSingle<T>(string classType, params object[] parameters)
+        public T? StartSingle<T>(string classType, params object[] parameters)
         {
-            return StartSingle<T>(Type.GetType(classType), parameters);
+            Type? type = Type.GetType(classType);
+            if (type == null) return default;
+            return StartSingle<T>(type, parameters);
         }
 
-        public T StartSingle<T>(Type classType, params object[] parameters)
+        public T? StartSingle<T>(Type classType, params object[] parameters)
         {
             if (disposedValue) return default;
             ISpider<T> spider = _spiderFactory.GetSpider<T>(classType, parameters);
             //add the new spider
             _spiders.Add(spider);
             spider.Go();
-
-            spider.ExtractData.TryTake(out T spiderData);
-            //add the new spider
+           
+            spider.ExtractData.TryTake(out T? spiderData);
+            //remove the new spider
             lock (_spiders)
             {
                 _spiders.Remove(spider);
@@ -88,13 +99,13 @@ namespace MisterSpider
 
         public IList<T> StartSingleList<T>(Type classType, params object[] parameters)
         {
-            if (disposedValue) return default;
+            List<T> spiderData = new List<T>();
+            if (disposedValue) return spiderData;
             ISpider<T> spider = _spiderFactory.GetSpider<T>(classType, parameters);
             //add the new spider
             _spiders.Add(spider);
             spider.Go();
-
-            List<T> spiderData = new List<T>();
+           
             spiderData.AddRange(spiderData);
 
             //add the new spider
@@ -167,16 +178,21 @@ namespace MisterSpider
         }
 
         // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-        // ~WebScrapperManager()
-        // {
-        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        //     Dispose(disposing: false);
-        // }
+        ~WebScrapperManager()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(false);
+        }
 
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
+            Dispose(true);
+            // This object will be cleaned up by the Dispose method.
+            // Therefore, you should call GC.SupressFinalize to
+            // take this object off the finalization queue 
+            // and prevent finalization code for this object
+            // from executing a second time.
             GC.SuppressFinalize(this);
         }
 

@@ -38,7 +38,7 @@ namespace MisterSpider
             ThreadPool.QueueUserWorkItem(new WaitCallback(
              (x) =>
              {
-                 CancellationToken token = (CancellationToken)x;
+                 CancellationToken token = (CancellationToken)x!;
                  if (token.IsCancellationRequested) token.ThrowIfCancellationRequested();
 
                  if (_config.ShouldSleep) Thread.Sleep(IdleTime());
@@ -91,10 +91,16 @@ namespace MisterSpider
             AutoEvent.WaitOne();
         }
 
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        ~ThreadManager()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(false);
+        }
+
         public void Dispose()
         {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         protected virtual void Dispose(bool disposing)

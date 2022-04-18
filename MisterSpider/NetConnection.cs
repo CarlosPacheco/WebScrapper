@@ -38,7 +38,7 @@ namespace MisterSpider
 
         private HttpResponseMessage? GetResponse(string url)
         {
-            HttpResponseMessage response = null;
+            HttpResponseMessage? response = null;
 
             _logger.LogDebug("Loading new page, {0}", url);
 
@@ -53,8 +53,11 @@ namespace MisterSpider
                     case HttpStatusCode.OK: break;
                     case HttpStatusCode.Found: break;
                     case HttpStatusCode.MovedPermanently: break;
+                    case HttpStatusCode.NotFound:
+                        _logger.LogInformation("StatusCode: {0}", response.StatusCode);
+                        break;
                     default:
-                        throw new Exception(response.StatusCode.ToString());
+                        throw new Exception(string.Format("StatusCode: {0}", response.StatusCode));
                 }
             }
             catch (WebException ex)

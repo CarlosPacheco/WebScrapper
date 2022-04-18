@@ -4,8 +4,8 @@ namespace MisterSpider
 {
     public interface INetConnection
     {
-        Stream Read(Url url);
+        Stream? Read(Url url);
 
-        Stream Read(string absoluteUri);
+        Stream? Read(string absoluteUri);
     }
 }

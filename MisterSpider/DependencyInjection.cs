@@ -23,7 +23,7 @@ namespace MisterSpider
             services.AddSingleton<INetConnection, NetConnection>();
             services.AddTransient<IParallelManager, ThreadManager>();
             services.AddSingleton<ISpiderFactory, SpiderFactory>();
-            services.AddSingleton<IWebScrapperManager, WebScrapperManager>();
+            services.AddScoped<IWebScrapperManager, WebScrapperManager>();
             services.AddHttpClient(Options.DefaultName, httpClient =>
             {
                 httpClient.DefaultRequestHeaders.Add(HeaderNames.UserAgent, "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36");

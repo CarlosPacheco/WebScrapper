@@ -56,6 +56,7 @@ namespace MisterSpider
         /// <summary>
         /// The location on the hard drive where downloaded files will be saved
         /// </summary>
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public string DownloadFolder { get; set; }
 
         /// <summary>
@@ -97,11 +98,11 @@ namespace MisterSpider
         public IList<string> WhiteListedDomains { get; set; }
 
         public IList<string> ClassTypes { get; set; }
+        public string WebProxyAddress { get; set; }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
         public bool SaveErrorItens { get; set; }
 
         public bool TryAgainOnError { get; set; }
-
-        public string WebProxyAddress { get; set; }
     }
 }

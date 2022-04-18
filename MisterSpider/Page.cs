@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 namespace MisterSpider
@@ -17,21 +18,48 @@ namespace MisterSpider
         public Url Url { get; private set; }
         public Stream? Source { get; private set; }
 
-        private HtmlDocument _document;
         private bool disposedValue;
 
-        public HtmlDocument Document
+        private HtmlDocument? _document;
+
+        /// <summary>
+        /// Helper prop
+        /// Read all data from Source (MemoryStream) and Close it
+        /// If you don't want close the Source don't call this and use a HtmlDocument -> .Load(Source)
+        /// </summary>
+        public HtmlDocument? Document
         {
             get
             {
-                if (_document != null || Source == null) return _document;
+                if (disposedValue || _document != null || Source == null) return _document;
                 _document = new HtmlDocument();
                 _document.Load(Source);
+                Source.Dispose();
                 return _document;
             }
+            set { _document = value; }
         }
 
-        public Page(ILogger logger, Url url, Stream source)
+        private JsonNode? _jsonNode;
+
+        /// <summary>
+        /// Helper prop
+        /// Read all data from Source (MemoryStream) and Close it
+        /// If you don't want close the Source don't call this and use a JsonNode.Parse(Source)
+        /// </summary>
+        public JsonNode? Node
+        {
+            get
+            {
+                if (disposedValue || _jsonNode != null || Source == null) return _jsonNode;
+                _jsonNode = JsonNode.Parse(Source);
+                Source?.Dispose();
+                return _jsonNode;
+            }
+            set { _jsonNode = value; }
+        }
+
+        public Page(ILogger logger, Url url, Stream? source)
         {
             _logger = logger;
             Url = url;
@@ -41,6 +69,7 @@ namespace MisterSpider
 
         public void FetchAllUrls(int depth)
         {
+            if (Source == null) return;
             using StreamReader sr = new StreamReader(Source);
             MatchCollection matches = UrlPattern.Matches(sr.ReadToEnd());
 
@@ -118,8 +147,10 @@ namespace MisterSpider
             {
                 if (disposing)
                 {
-                    Source.Dispose();
+                    Source?.Dispose();
                     _document = null;
+                    _jsonNode = null;
+                    Source = null;
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer
@@ -129,17 +160,16 @@ namespace MisterSpider
         }
 
         // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-        // ~Page()
-        // {
-        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        //     Dispose(disposing: false);
-        // }
+        ~Page()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(false);
+        }
 
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            Dispose(true);
         }
     }
 }
